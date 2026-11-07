@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Grant Opportunity Finder</title>
+    <style>
+      :root {
+        --bg: #f4f7fb;
+        --panel: #ffffff;
+        --ink: #1f2937;
+        --muted: #6b7280;
+        --accent: #2563eb;
+        --accent-soft: #dbeafe;
+        --border: #dfe7f5;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: Arial, sans-serif;
+      }
+      main {
+        max-width: 980px;
+        margin: 48px auto;
+        padding: 24px;
+      }
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        box-shadow: 0 8px 16px rgba(37, 99, 235, 0.06);
+        padding: 24px;
+      }
+      h1 {
+        margin-top: 0;
+      }
+      form {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin: 20px 0;
+      }
+      input {
+        flex: 1 1 260px;
+        padding: 12px 14px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        font-size: 1rem;
+      }
+      button {
+        border: none;
+        border-radius: 10px;
+        background: var(--accent);
+        color: white;
+        cursor: pointer;
+        padding: 12px 20px;
+        font-size: 1rem;
+      }
+      .tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 16px 0;
+      }
+      .tag {
+        display: inline-block;
+        background: var(--accent-soft);
+        color: var(--accent);
+        border-radius: 999px;
+        padding: 7px 12px;
+        font-size: 0.9rem;
+      }
+      .results {
+        display: grid;
+        gap: 18px;
+        margin-top: 28px;
+      }
+      .result {
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 18px;
+        background: #fafcff;
+      }
+      .result h3 {
+        margin: 0 0 8px;
+      }
+      .meta {
+        color: var(--muted);
+        margin-bottom: 10px;
+        font-size: 0.95rem;
+      }
+      .summary {
+        margin: 0 0 12px;
+        line-height: 1.5;
+      }
+      .result a {
+        color: var(--accent);
+        font-weight: 600;
+        text-decoration: none;
+      }
+      .empty {
+        color: var(--muted);
+        padding: 24px 0 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="panel">
+        <h1>Grant Opportunity Finder</h1>
+        <p>Search for open grants aligned with strategic priorities such as water, flood, resilience, and infrastructure.</p>
+
+        <form method="post" action="{{ url_for('search') }}">
+          <input
+            type="text"
+            name="keyword"
+            value="{{ query }}"
+            placeholder="Search keywords or comma-separated terms"
+          />
+          <button type="submit">Search</button>
+        </form>
+
+        <div class="tags">
+          {% for priority in priorities %}
+            <span class="tag">{{ priority }}</span>
+          {% endfor %}
+        </div>
+
+        <div class="results">
+          {% if results %}
+            {% for entry in results %}
+              <article class="result">
+                <h3>{{ entry.title }}</h3>
+                <div class="meta">
+                  <span>{{ entry.agency }}</span>
+                  {% if entry.category %}
+                    <span> · {{ entry.category }}</span>
+                  {% endif %}
+                  {% if entry.close_date %}
+                    <span> · Close date: {{ entry.close_date }}</span>
+                  {% endif %}
+                </div>
+                {% if entry.summary %}
+                  <p class="summary">{{ entry.summary }}</p>
+                {% endif %}
+                {% if entry.url %}
+                  <a href="{{ entry.url }}" target="_blank" rel="noreferrer">View opportunity</a>
+                {% endif %}
+              </article>
+            {% endfor %}
+          {% else %}
+            <p class="empty">No grant opportunities found yet. Use the search form above to find relevant funding sources.</p>
+          {% endif %}
+        </div>
+      </div>
+    </main>
+  </body>
+</html>
