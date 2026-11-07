@@ -1,6 +1,8 @@
 import os
 from typing import Any
+import logging
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import requests
 from flask import Flask, jsonify, render_template, request
 
@@ -8,6 +10,7 @@ from flask import Flask, jsonify, render_template, request
 app = Flask(__name__)
 
 GRANTS_SEARCH_URL = "https://api.grants.gov/v1/api/search2"
+GRANTS_DETAILS_URL = "https://api.grants.gov/v1/api/fetchOpportunity"
 
 AGENCY_PRIORITIES = [
     "water",
@@ -18,15 +21,45 @@ AGENCY_PRIORITIES = [
 
 
 def normalize_opportunity(raw: dict[str, Any]) -> dict[str, Any]:
+    opportunity_id = raw.get("id")
     return {
-        "id": raw.get("id") or raw.get("number") or "unknown",
+        "id": opportunity_id or raw.get("number") or "unknown",
         "title": raw.get("title") or "Untitled opportunity",
         "agency": raw.get("agency") or raw.get("agencyName") or "Unknown agency",
         "category": raw.get("category") or raw.get("oppCategory") or "General",
         "close_date": raw.get("closeDate") or raw.get("deadline") or "Not specified",
-        "url": raw.get("link") or raw.get("url") or "",
+        "url": raw.get("link")
+        or raw.get("url")
+        or (
+            f"https://www.grants.gov/search-results-detail/{opportunity_id}"
+            if opportunity_id
+            else ""
+        ),
         "summary": raw.get("summary") or raw.get("description") or "",
         "keywords": raw.get("keywords") or [],
+        "opportunity_id": opportunity_id,
+    }
+
+
+def fetch_opportunity_details(opportunity_id: Any) -> dict[str, Any]:
+    response = requests.post(
+        GRANTS_DETAILS_URL,
+        json={"opportunityId": opportunity_id},
+        timeout=30,
+    )
+    response.raise_for_status()
+    payload = response.json()
+
+    if payload.get("errorcode") not in (0, None):
+        raise RuntimeError(f"Grants.gov details API error: {payload}")
+
+    details = payload.get("data") or {}
+    synopsis = details.get("synopsis") or {}
+    return {
+        "summary": synopsis.get("synopsisDesc"),
+        "award_floor": synopsis.get("awardFloorFormatted"),
+        "award_ceiling": synopsis.get("awardCeilingFormatted"),
+        "estimated_funding": synopsis.get("estimatedFundingFormatted"),
     }
 
 
@@ -63,7 +96,33 @@ def find_opportunities_for_terms(terms: list[str]) -> list[dict[str, Any]]:
                 results.append(item)
 
             if len(results) >= 20:
-                return results
+                break
+        if len(results) >= 20:
+            break
+
+    detail_items = [item for item in results if item.get("opportunity_id")]
+    if detail_items:
+        with ThreadPoolExecutor(max_workers=min(5, len(detail_items))) as executor:
+            requests_by_future = {
+                executor.submit(fetch_opportunity_details, item["opportunity_id"]): item
+                for item in detail_items
+            }
+            for future in as_completed(requests_by_future):
+                item = requests_by_future[future]
+                try:
+                    details = future.result()
+                    item.update(
+                        {
+                            key: value
+                            for key, value in details.items()
+                            if value is not None and value != ""
+                        }
+                    )
+                except (requests.RequestException, RuntimeError):
+                    logging.exception(
+                        "Could not load Grants.gov details for opportunity %s",
+                        item["id"],
+                    )
 
     return results
 

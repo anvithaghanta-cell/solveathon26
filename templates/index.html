@@ -215,13 +215,31 @@
                   {% endif %}
                 </div>
 
+                <p class="meta">
+                  <strong>Grant amount:</strong>
+                  {% if entry.award_floor and entry.award_ceiling %}
+                    ${{ entry.award_floor }}–${{ entry.award_ceiling }} per award
+                  {% elif entry.award_floor %}
+                    From ${{ entry.award_floor }} per award
+                  {% elif entry.award_ceiling %}
+                    Up to ${{ entry.award_ceiling }} per award
+                  {% else %}
+                    Not listed
+                  {% endif %}
+                  {% if entry.estimated_funding %}
+                    · Estimated total funding: ${{ entry.estimated_funding }}
+                  {% endif %}
+                </p>
+
                 {% if entry.summary %}
-                  <p class="summary">{{ entry.summary }}</p>
+                  <p class="summary">{{ entry.summary|striptags|truncate(300, true, "…") }}</p>
+                {% else %}
+                  <p class="summary">A short description is not available. See the official announcement for details.</p>
                 {% endif %}
 
                 {% if entry.url %}
                   <a href="{{ entry.url }}" target="_blank" rel="noreferrer">
-                    View opportunity
+                    View and apply on Grants.gov
                   </a>
                 {% endif %}
               </article>
