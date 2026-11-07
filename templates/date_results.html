@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Your Grant Matches – Speed Dating Results</title>
+  <style>
+    :root {
+      --bg: #f4f7fb; --panel: #fff; --ink: #1f2937; --muted: #6b7280;
+      --accent: #2563eb; --accent-soft: #dbeafe; --border: #dfe7f5;
+      --green: #16a34a; --green-soft: #dcfce7;
+      --red: #dc2626;   --red-soft: #fee2e2;
+      --yellow: #d97706; --yellow-soft: #fef3c7;
+      --orange: #ea580c;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); font-family: Arial, sans-serif; color: var(--ink); }
+    main { max-width: 800px; margin: 40px auto; padding: 24px; }
+
+    /* Header */
+    .hero { text-align: center; margin-bottom: 36px; }
+    .hero .emoji { font-size: 3rem; }
+    .hero h1 { margin: 8px 0 6px; font-size: 2rem; }
+    .hero p { margin: 0; color: var(--muted); }
+
+    /* Taste profile pill row */
+    .profile-section { margin-bottom: 32px; }
+    .profile-section h2 { font-size: 1rem; color: var(--muted); margin: 0 0 10px; text-transform: uppercase; letter-spacing: .05em; }
+    .pill-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .pill {
+      display: flex; align-items: center; gap: 6px;
+      border-radius: 999px; padding: 6px 14px; font-size: 0.85rem; font-weight: 600;
+    }
+    .pill-like    { background: var(--green-soft); color: var(--green); }
+    .pill-neutral { background: var(--accent-soft); color: var(--accent); }
+    .pill-dislike { background: var(--red-soft);   color: var(--red); }
+
+    /* Liked / disliked recap */
+    .recap-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 36px; }
+    @media (max-width: 600px) { .recap-grid { grid-template-columns: 1fr; } }
+    .recap-box { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 18px; }
+    .recap-box h3 { margin: 0 0 10px; font-size: 0.95rem; }
+    .recap-item { font-size: 0.85rem; color: var(--muted); padding: 4px 0; border-bottom: 1px solid var(--bg); }
+    .recap-item:last-child { border-bottom: none; }
+
+    /* Recommendation cards */
+    .recs-header { font-size: 1.3rem; font-weight: 800; margin-bottom: 20px; }
+    .rec-card {
+      background: var(--panel); border: 1px solid var(--border); border-radius: 16px;
+      padding: 22px; margin-bottom: 16px; position: relative;
+      transition: box-shadow 0.15s;
+    }
+    .rec-card:hover { box-shadow: 0 6px 20px rgba(37,99,235,0.10); }
+
+    /* Match score badge */
+    .match-badge {
+      position: absolute; top: 18px; right: 18px;
+      font-size: 0.78rem; font-weight: 800; padding: 4px 10px;
+      border-radius: 999px;
+    }
+    .match-high   { background: var(--green-soft); color: var(--green); }
+    .match-mid    { background: var(--yellow-soft); color: var(--yellow); }
+    .match-low    { background: var(--border);      color: var(--muted); }
+
+    .agency-tag {
+      display: inline-block; background: var(--accent-soft); color: var(--accent);
+      border-radius: 999px; padding: 3px 10px; font-size: 0.78rem; font-weight: 700;
+      margin-bottom: 10px;
+    }
+    .rec-card h3 { margin: 0 0 6px; font-size: 1.05rem; padding-right: 100px; }
+    .meta { color: var(--muted); font-size: 0.875rem; margin-bottom: 10px; }
+    .summary-text { font-size: 0.92rem; line-height: 1.6; margin: 0 0 12px;
+                    display: -webkit-box; line-clamp: 3; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+    /* Why matched */
+    .why-matched {
+      display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px;
+    }
+    .why-tag {
+      font-size: 0.75rem; padding: 2px 10px; border-radius: 999px;
+      background: var(--accent-soft); color: var(--accent); font-weight: 600;
+    }
+
+    /* Award + deadline rows */
+    .info-row {
+      display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; font-size: 0.875rem;
+    }
+    .info-chip {
+      display: flex; align-items: center; gap: 5px; padding: 5px 12px;
+      border-radius: 8px; font-weight: 600;
+    }
+    .chip-money    { background: var(--green-soft); color: var(--green); }
+    .chip-deadline { background: var(--yellow-soft); color: var(--yellow); }
+
+    /* Log-scale money bar */
+    .money-bar-bg {
+      background: var(--border); border-radius: 999px; height: 6px;
+      position: relative; overflow: hidden; margin: 6px 0 2px;
+    }
+    .money-bar-fill {
+      background: linear-gradient(90deg, var(--green), var(--accent));
+      border-radius: 999px; height: 6px; position: absolute; top: 0;
+    }
+    .money-scale-ticks { position: relative; height: 16px; }
+    .money-tick {
+      position: absolute; transform: translateX(-50%);
+      font-size: 0.6rem; color: var(--muted); white-space: nowrap; top: 0;
+    }
+    .money-tick::before {
+      content: ''; display: block; width: 1px; height: 4px;
+      background: var(--border); margin: 0 auto 1px;
+    }
+
+    /* Timeline bar */
+    .timeline-track {
+      position: relative; height: 6px; background: var(--border);
+      border-radius: 999px; overflow: hidden; margin: 6px 0;
+    }
+    .timeline-fill { position: absolute; left: 0; top: 0; height: 100%; border-radius: 999px; }
+    .fill-urgent { background: linear-gradient(90deg, var(--red), var(--orange)); }
+    .fill-soon   { background: linear-gradient(90deg, var(--orange), var(--yellow)); }
+    .fill-open   { background: linear-gradient(90deg, var(--accent), var(--green)); }
+    .fill-unknown { background: var(--muted); opacity: 0.3; width: 30% !important; }
+
+    .view-link {
+      color: var(--accent); font-weight: 700; text-decoration: none; font-size: 0.9rem;
+    }
+    .view-link:hover { text-decoration: underline; }
+
+    /* Actions */
+    .actions { display: flex; gap: 12px; margin-top: 32px; flex-wrap: wrap; }
+    .btn {
+      padding: 12px 24px; border-radius: 10px; border: none; font-size: 0.95rem;
+      font-weight: 700; cursor: pointer; text-decoration: none; display: inline-block;
+    }
+    .btn-primary   { background: var(--accent); color: white; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-secondary { background: var(--border); color: var(--ink); }
+    .btn-secondary:hover { background: #c9d8f0; }
+    .btn-dating    { background: #fce7f3; color: #9d174d; }
+    .btn-dating:hover { background: #fbcfe8; }
+  </style>
+</head>
+<body>
+<main>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="emoji">💘</div>
+    <h1>Your Grant Matches</h1>
+    <p>Based on your {{ liked|length + disliked|length }} swipes, here's what we think you'll love.</p>
+  </div>
+
+  <!-- Taste profile summary -->
+  {% set top_agencies = profile.agencies | dictsort(by='value') | reverse | list %}
+  {% set top_cats     = profile.categories | dictsort(by='value') | reverse | list %}
+  {% set top_sizes    = profile.size_buckets | dictsort(by='value') | reverse | list %}
+  {% if top_agencies or top_cats or top_sizes %}
+  <div class="profile-section">
+    <h2>Your taste profile</h2>
+    <div class="pill-row">
+      {% for name, score in top_agencies[:3] %}
+        <span class="pill {% if score > 0 %}pill-like{% elif score < 0 %}pill-dislike{% else %}pill-neutral{% endif %}">
+          🏛 {{ name }}
+        </span>
+      {% endfor %}
+      {% for name, score in top_cats[:3] %}
+        <span class="pill {% if score > 0 %}pill-like{% elif score < 0 %}pill-dislike{% else %}pill-neutral{% endif %}">
+          📂 {{ name }}
+        </span>
+      {% endfor %}
+      {% for name, score in top_sizes[:2] %}
+        {% if score > 0 %}
+          <span class="pill pill-neutral">
+            💰 {{ {'small':'Under $50k','mid':'$50k–$500k','large':'$500k–$5M','xlarge':'Over $5M'}.get(name, name) }}
+          </span>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Liked / disliked recap -->
+  <div class="recap-grid">
+    <div class="recap-box">
+      <h3>✓ You were interested in ({{ liked|length }})</h3>
+      {% for g in liked %}
+        <div class="recap-item">{{ g.title | truncate(60) }}</div>
+      {% else %}
+        <div class="recap-item" style="color:var(--muted)">None</div>
+      {% endfor %}
+    </div>
+    <div class="recap-box">
+      <h3>✗ You passed on ({{ disliked|length }})</h3>
+      {% for g in disliked %}
+        <div class="recap-item">{{ g.title | truncate(60) }}</div>
+      {% else %}
+        <div class="recap-item" style="color:var(--muted)">None</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Recommendations -->
+  <div class="recs-header">
+    🎯 Recommended for you
+    <span style="font-size:0.9rem;font-weight:400;color:var(--muted);margin-left:8px;">
+      {{ recommendations|length }} grants ranked by match
+    </span>
+  </div>
+
+  {% for rec in recommendations %}
+    {% set ms = rec.match_score | default(0) %}
+    {% if ms >= 2.0 %}
+      {% set badge_class = "match-high" %}{% set badge_label = "Strong match" %}
+    {% elif ms >= 0.5 %}
+      {% set badge_class = "match-mid" %}{% set badge_label = "Good match" %}
+    {% else %}
+      {% set badge_class = "match-low" %}{% set badge_label = "Possible match" %}
+    {% endif %}
+
+    {% set floor   = rec.award_floor_num   | default(0) | int %}
+    {% set ceiling = rec.award_ceiling_num | default(0) | int %}
+    {% set cd = rec.close_date | string %}
+
+    <div class="rec-card"
+         data-close="{{ cd }}"
+         data-floor="{{ floor }}"
+         data-ceiling="{{ ceiling }}">
+
+      <span class="match-badge {{ badge_class }}">{{ badge_label }}</span>
+      <span class="agency-tag">{{ rec.agency }}</span>
+      <h3>{{ rec.title }}</h3>
+      <div class="meta">{{ rec.category }}</div>
+
+      <!-- Award range -->
+      {% if ceiling > 0 or floor > 0 %}
+        <div class="money-bar-bg" data-money-bar data-floor="{{ floor }}" data-ceiling="{{ ceiling }}">
+          <div class="money-bar-fill" style="margin-left:0%;width:0%"></div>
+        </div>
+        <div class="money-scale-ticks" aria-hidden="true"></div>
+        <div class="meta" style="margin-top:4px;">
+          {% if rec.award_floor and rec.award_ceiling %}
+            💰 ${{ rec.award_floor }} – ${{ rec.award_ceiling }}
+          {% elif rec.award_ceiling %}
+            💰 Up to ${{ rec.award_ceiling }}
+          {% elif rec.award_floor %}
+            💰 From ${{ rec.award_floor }}
+          {% endif %}
+        </div>
+      {% endif %}
+
+      <!-- Deadline timeline -->
+      {% if cd and cd not in ('Not specified','None','') %}
+        <div style="font-size:0.8rem;color:var(--muted);margin-bottom:3px;">
+          Deadline <span class="deadline-badge" data-badge>{{ cd }}</span>
+        </div>
+        <div class="timeline-track">
+          <div class="timeline-fill fill-unknown" data-timeline-fill style="width:30%"></div>
+        </div>
+      {% endif %}
+
+      <!-- Summary -->
+      {% if rec.summary %}
+        <p class="summary-text" style="margin-top:12px;">{{ rec.summary | striptags }}</p>
+      {% endif %}
+
+      {% if rec.url %}
+        <a class="view-link" href="{{ rec.url }}" target="_blank" rel="noreferrer">
+          View on Grants.gov →
+        </a>
+      {% endif %}
+    </div>
+  {% else %}
+    <p style="color:var(--muted);text-align:center;padding:32px 0;">
+      No additional recommendations found — try another round!
+    </p>
+  {% endfor %}
+
+  <div class="actions">
+    <a href="/date" class="btn btn-dating">💘 Date again</a>
+    <a href="/quiz" class="btn btn-primary">Try the quiz</a>
+    <a href="/"    class="btn btn-secondary">Search manually</a>
+  </div>
+
+</main>
+
+<script>
+// ── Log-scale money bars ──
+(function(){
+  const LOG_MIN = Math.log10(1_000), LOG_MAX = Math.log10(100_000_000);
+  const TICKS = [[1000,'$1k'],[10000,'$10k'],[100000,'$100k'],[1000000,'$1M'],[10000000,'$10M'],[100000000,'$100M']];
+  function logPct(d){ if(!d||d<=0)return 0; return((Math.log10(Math.min(Math.max(d,1000),100000000))-LOG_MIN)/(LOG_MAX-LOG_MIN))*100; }
+  document.querySelectorAll('[data-money-bar]').forEach(bar=>{
+    const floor=parseInt(bar.dataset.floor)||0, ceiling=parseInt(bar.dataset.ceiling)||0;
+    const fill=bar.querySelector('.money-bar-fill');
+    const lo=floor>0?logPct(floor):0, hi=ceiling>0?logPct(ceiling):(floor>0?logPct(floor)+3:100);
+    fill.style.marginLeft=lo.toFixed(1)+'%';
+    fill.style.width=Math.min(Math.max(hi-lo,3),100-lo).toFixed(1)+'%';
+    const tc=bar.nextElementSibling;
+    if(tc?.classList.contains('money-scale-ticks')){
+      TICKS.forEach(([v,l])=>{const t=document.createElement('span');t.className='money-tick';t.textContent=l;t.style.left=logPct(v).toFixed(1)+'%';tc.appendChild(t);});
+    }
+  });
+})();
+
+// ── Timeline bars ──
+document.querySelectorAll('[data-close]').forEach(card=>{
+  const fill=card.querySelector('[data-timeline-fill]'), badge=card.querySelector('[data-badge]');
+  if(!fill)return;
+  const deadline=new Date(card.dataset.close), now=new Date();
+  if(isNaN(deadline))return;
+  const days=Math.ceil((deadline-now)/86400000);
+  let fc,bc,bt;
+  if(days<0)         {fc='fill-urgent';bc='deadline-urgent';bt='Closed';fill.style.width='100%';}
+  else if(days<=14)  {fc='fill-urgent';bc='deadline-urgent';bt=days+'d left';fill.style.width=Math.max(85,100-days*2)+'%';}
+  else if(days<=60)  {fc='fill-soon';  bc='deadline-soon';  bt=days+'d left';fill.style.width=Math.max(40,100-days/1.8)+'%';}
+  else               {fc='fill-open';  bc='deadline-open';  bt=days<=365?days+'d left':deadline.toLocaleDateString('en-US',{month:'short',year:'numeric'});fill.style.width=Math.max(10,100-days/2.5)+'%';}
+  fill.className='timeline-fill '+fc;
+  if(badge){badge.className='deadline-badge '+bc;badge.textContent=bt;}
+});
+</script>
+</body>
+</html>

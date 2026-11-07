@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Grant Speed Dating</title>
+  <style>
+    :root {
+      --bg: #f4f7fb; --panel: #fff; --ink: #1f2937; --muted: #6b7280;
+      --accent: #2563eb; --accent-soft: #dbeafe; --border: #dfe7f5;
+      --green: #16a34a; --red: #dc2626;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); font-family: Arial, sans-serif; color: var(--ink);
+           display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    .card {
+      background: var(--panel); border: 1px solid var(--border); border-radius: 24px;
+      box-shadow: 0 12px 32px rgba(37,99,235,0.10); padding: 48px 40px;
+      max-width: 500px; width: 90%; text-align: center;
+    }
+    .emoji { font-size: 4rem; margin-bottom: 16px; }
+    h1 { margin: 0 0 12px; font-size: 1.8rem; }
+    p  { margin: 0 0 16px; color: var(--muted); line-height: 1.6; }
+    .steps {
+      background: var(--bg); border-radius: 14px; padding: 20px;
+      margin: 24px 0; text-align: left;
+    }
+    .step-row { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
+    .step-row:last-child { margin-bottom: 0; }
+    .step-num {
+      background: var(--accent); color: white; border-radius: 50%;
+      width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
+      font-size: 0.8rem; font-weight: 700; flex-shrink: 0; margin-top: 1px;
+    }
+    .step-text { font-size: 0.95rem; line-height: 1.5; }
+    .swipe-preview { display: flex; gap: 10px; justify-content: center; margin: 20px 0; }
+    .swipe-btn {
+      display: flex; align-items: center; gap: 6px; padding: 10px 20px;
+      border-radius: 999px; font-size: 1rem; font-weight: 700; border: none; cursor: default;
+    }
+    .swipe-like    { background: #dcfce7; color: var(--green); }
+    .swipe-dislike { background: #fee2e2; color: var(--red); }
+    form { margin-top: 8px; }
+    button[type=submit] {
+      background: var(--accent); color: white; border: none; border-radius: 12px;
+      padding: 14px 36px; font-size: 1.1rem; font-weight: 700; cursor: pointer; width: 100%;
+    }
+    button[type=submit]:hover { background: #1d4ed8; }
+    .back { display: block; margin-top: 14px; color: var(--muted); font-size: 0.9rem;
+            text-decoration: none; }
+    .back:hover { color: var(--accent); }
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="emoji">💘</div>
+  <h1>Grant Speed Dating</h1>
+  <p>We'll show you <strong>5 grant cards</strong>. Swipe right on ones you like, left on ones you don't — then we'll use your taste to recommend the best matches.</p>
+
+  <div class="steps">
+    <div class="step-row">
+      <div class="step-num">1</div>
+      <div class="step-text">We show you 5 real grants from Grants.gov</div>
+    </div>
+    <div class="step-row">
+      <div class="step-num">2</div>
+      <div class="step-text">Hit ✓ or ✗ for each one — takes about 60 seconds</div>
+    </div>
+    <div class="step-row">
+      <div class="step-num">3</div>
+      <div class="step-text">We learn your preferences: agency, size, category, topic</div>
+    </div>
+    <div class="step-row">
+      <div class="step-num">4</div>
+      <div class="step-text">You get a ranked list of recommended grants tailored to your taste</div>
+    </div>
+  </div>
+
+  <div class="swipe-preview">
+    <span class="swipe-btn swipe-dislike">✗ Pass</span>
+    <span class="swipe-btn swipe-like">✓ Interested</span>
+  </div>
+
+  <form method="post" action="/date/begin">
+    <button type="submit">Let's go →</button>
+  </form>
+  <a class="back" href="/">← Back to search</a>
+</div>
+</body>
+</html>

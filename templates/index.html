@@ -1,257 +1,407 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Grant Opportunity Finder</title>
-    <style>
-      :root {
-        --bg: #f4f7fb;
-        --panel: #ffffff;
-        --ink: #1f2937;
-        --muted: #6b7280;
-        --accent: #2563eb;
-        --accent-soft: #dbeafe;
-        --border: #dfe7f5;
-      }
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Federal Funds Matchmaker</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --panel: #ffffff;
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --accent: #2563eb;
+      --accent-soft: #dbeafe;
+      --border: #dfe7f5;
+      --green: #16a34a;
+      --green-soft: #dcfce7;
+      --yellow: #d97706;
+      --yellow-soft: #fef3c7;
+      --red: #dc2626;
+      --red-soft: #fee2e2;
+      --orange: #ea580c;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font-family: Arial, sans-serif; }
+    main { max-width: 820px; margin: 40px auto; padding: 24px; }
 
-      * {
-        box-sizing: border-box;
-      }
+    /* Header */
+    .site-header { text-align: center; margin-bottom: 32px; }
+    .site-header h1 { margin: 0 0 6px; font-size: 1.9rem; }
+    .site-header p  { margin: 0; color: var(--muted); }
 
-      body {
-        margin: 0;
-        background: var(--bg);
-        color: var(--ink);
-        font-family: Arial, sans-serif;
-      }
+    /* Search panel */
+    .search-panel {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 16px; padding: 28px;
+      box-shadow: 0 4px 12px rgba(37,99,235,0.07);
+      margin-bottom: 28px;
+    }
+    .search-row { display: flex; gap: 10px; margin-bottom: 20px; }
+    .search-row input[type="text"] {
+      flex: 1; padding: 12px 16px; border: 1px solid var(--border);
+      border-radius: 10px; font-size: 1rem; font-family: inherit;
+    }
+    .search-row button {
+      padding: 12px 22px; background: var(--accent); color: white;
+      border: none; border-radius: 10px; font-size: 1rem;
+      font-weight: 700; cursor: pointer; white-space: nowrap;
+    }
+    .search-row button:hover { background: #1d4ed8; }
 
-      main {
-        max-width: 980px;
-        margin: 48px auto;
-        padding: 24px;
-      }
+    /* ── MONEY BAR (search page) ── */
+    .money-section { margin-bottom: 6px; }
+    .money-section-label {
+      font-weight: 700; font-size: 0.95rem; margin-bottom: 10px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .money-range-display { color: var(--accent); font-size: 1rem; font-weight: 800; }
+    .money-presets { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    .preset-btn {
+      font-size: 0.8rem; padding: 5px 12px; border-radius: 999px;
+      border: 1px solid var(--border); background: white;
+      cursor: pointer; font-weight: 600; color: var(--ink); transition: all 0.15s;
+    }
+    .preset-btn:hover, .preset-btn.active {
+      background: var(--accent-soft); border-color: var(--accent); color: var(--accent);
+    }
+    .slider-track {
+      position: relative; height: 10px; background: var(--border);
+      border-radius: 999px; margin: 6px 0 20px;
+    }
+    .slider-range-fill {
+      position: absolute; height: 10px; border-radius: 999px;
+      background: linear-gradient(90deg, var(--accent), var(--green));
+      pointer-events: none;
+    }
+    .range-input {
+      position: absolute; width: 100%; height: 10px; top: 0; left: 0;
+      appearance: none; background: transparent; pointer-events: none; margin: 0;
+    }
+    .range-input::-webkit-slider-thumb {
+      appearance: none; width: 20px; height: 20px; border-radius: 50%;
+      background: white; border: 3px solid var(--accent); pointer-events: all;
+      cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+    }
+    .range-input::-moz-range-thumb {
+      width: 20px; height: 20px; border-radius: 50%;
+      background: white; border: 3px solid var(--accent);
+      pointer-events: all; cursor: pointer;
+    }
+    .money-inputs { display: flex; gap: 10px; }
+    .money-inputs input {
+      flex: 1; padding: 8px 12px; border: 1px solid var(--border);
+      border-radius: 10px; font-size: 0.9rem; font-family: inherit;
+    }
 
-      .panel {
-        background: var(--panel);
-        border: 1px solid var(--border);
-        border-radius: 16px;
-        box-shadow: 0 8px 16px rgba(37, 99, 235, 0.06);
-        padding: 24px;
-      }
+    /* Keywords hint */
+    .kw-hint { font-size: 0.85rem; color: var(--muted); margin-top: 6px; }
+    .kw-hint a { color: var(--accent); text-decoration: none; font-weight: 600; }
+    .kw-hint a:hover { text-decoration: underline; }
 
-      h1 {
-        margin-top: 0;
-      }
+    /* Result cards */
+    .results { display: grid; gap: 20px; }
+    .result {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 14px; padding: 22px; position: relative;
+    }
+    .result h3 { margin: 0 0 8px; font-size: 1.05rem; padding-right: 50px; }
+    .meta { color: var(--muted); font-size: 0.9rem; margin-bottom: 10px; }
+    .summary { margin: 0 0 14px; line-height: 1.6; font-size: 0.95rem; }
+    .result a.view-link {
+      color: var(--accent); font-weight: 600; text-decoration: none; font-size: 0.95rem;
+    }
+    .result a.view-link:hover { text-decoration: underline; }
 
-      .quiz-card {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 20px;
-        flex-wrap: wrap;
-        margin: 24px 0;
-        padding: 20px;
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        background: #f8fbff;
-      }
+    /* ── TIMELINE BAR (results) ── */
+    .timeline-wrap { margin-bottom: 10px; }
+    .timeline-label {
+      font-size: 0.8rem; color: var(--muted); margin-bottom: 4px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .deadline-badge {
+      font-size: 0.75rem; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+    }
+    .deadline-urgent  { background: var(--red-soft);    color: var(--red); }
+    .deadline-soon    { background: var(--yellow-soft);  color: var(--yellow); }
+    .deadline-open    { background: var(--green-soft);   color: var(--green); }
+    .deadline-unknown { background: var(--border);       color: var(--muted); }
+    .timeline-track {
+      position: relative; height: 10px; background: var(--border);
+      border-radius: 999px; overflow: hidden;
+    }
+    .timeline-fill {
+      position: absolute; left: 0; top: 0; height: 100%;
+      border-radius: 999px; transition: width 0.4s ease;
+    }
+    .fill-urgent { background: linear-gradient(90deg, var(--red), var(--orange)); }
+    .fill-soon   { background: linear-gradient(90deg, var(--orange), var(--yellow)); }
+    .fill-open   { background: linear-gradient(90deg, var(--accent), var(--green)); }
+    .fill-unknown { background: var(--muted); width: 30% !important; opacity: 0.4; }
 
-      .quiz-card h2 {
-        margin: 0 0 8px;
-        font-size: 1.25rem;
-      }
+    /* ── MONEY BAR (result card) ── */
+    .money-bar-wrap { margin-bottom: 10px; }
+    .money-bar-label {
+      font-size: 0.8rem; color: var(--muted); margin-bottom: 4px;
+      display: flex; justify-content: space-between;
+    }
+    .money-bar-bg { background: var(--border); border-radius: 999px; height: 7px; position: relative; overflow: hidden; }
+    .money-bar-fill {
+      background: linear-gradient(90deg, var(--green), var(--accent));
+      border-radius: 999px; height: 7px; max-width: 100%;
+      position: absolute; top: 0;
+    }
+    /* Log-scale tick marks under the bar */
+    .money-scale-ticks {
+      position: relative; height: 18px; margin-top: 2px;
+    }
+    .money-tick {
+      position: absolute; transform: translateX(-50%);
+      font-size: 0.65rem; color: var(--muted); white-space: nowrap;
+      top: 0;
+    }
+    .money-tick::before {
+      content: ''; display: block; width: 1px; height: 5px;
+      background: var(--border); margin: 0 auto 2px;
+    }
 
-      .quiz-card p {
-        margin: 0;
-        color: var(--muted);
-        line-height: 1.5;
-      }
+    .empty { color: var(--muted); text-align: center; padding: 40px 0; }
+  </style>
+</head>
+<body>
+<main>
+  <div class="site-header">
+    <h1>🏛️ Federal Funds Matchmaker</h1>
+    <p>Find federal grant opportunities aligned with NC agency priorities.</p>
+  </div>
 
-      .quiz-button {
-        display: inline-block;
-        flex-shrink: 0;
-        padding: 12px 20px;
-        border-radius: 10px;
-        background: var(--accent);
-        color: white;
-        font-weight: 600;
-        text-decoration: none;
-      }
+  <div class="search-panel">
+    <form method="post" action="/search" id="search-form">
 
-      .quiz-button:hover {
-        background: #1d4ed8;
-      }
+      <!-- Keyword search row -->
+      <div class="search-row">
+        <input type="text" name="keyword" id="keyword-input"
+               placeholder="e.g. water, flood, resilience, infrastructure"
+               value="{{ query or '' }}">
+        <button type="submit">Search</button>
+      </div>
 
-      form {
-        display: flex;
-        gap: 12px;
-        flex-wrap: wrap;
-        margin: 20px 0;
-      }
-
-      input {
-        flex: 1 1 260px;
-        padding: 12px 14px;
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        font-size: 1rem;
-      }
-
-      button {
-        border: none;
-        border-radius: 10px;
-        background: var(--accent);
-        color: white;
-        cursor: pointer;
-        padding: 12px 20px;
-        font-size: 1rem;
-      }
-
-      .tags {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin: 16px 0;
-      }
-
-      .tag {
-        display: inline-block;
-        background: var(--accent-soft);
-        color: var(--accent);
-        border-radius: 999px;
-        padding: 7px 12px;
-        font-size: 0.9rem;
-      }
-
-      .results {
-        display: grid;
-        gap: 18px;
-        margin-top: 28px;
-      }
-
-      .result {
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 18px;
-        background: #fafcff;
-      }
-
-      .result h3 {
-        margin: 0 0 8px;
-      }
-
-      .meta {
-        color: var(--muted);
-        margin-bottom: 10px;
-        font-size: 0.95rem;
-      }
-
-      .summary {
-        margin: 0 0 12px;
-        line-height: 1.5;
-      }
-
-      .result a {
-        color: var(--accent);
-        font-weight: 600;
-        text-decoration: none;
-      }
-
-      .empty {
-        color: var(--muted);
-        padding: 24px 0 8px;
-      }
-    </style>
-  </head>
-
-  <body>
-    <main>
-      <div class="panel">
-        <h1>Grant Opportunity Finder</h1>
-        <p>
-          Search for open grants aligned with strategic priorities such as
-          water, flood, resilience, and infrastructure.
-        </p>
-
-        <section class="quiz-card">
-          <div>
-            <h2>Not sure where to start?</h2>
-            <p>Take a quick quiz to find grant opportunities that may fit your project.</p>
-          </div>
-          <a class="quiz-button" href="{{ url_for('quiz') }}">Take the quiz</a>
-        </section>
-
-        <h2>Or search for grants</h2>
-
-        <form method="post" action="{{ url_for('search') }}">
-          <input
-            type="text"
-            name="keyword"
-            value="{{ query }}"
-            placeholder="Search keywords or comma-separated terms"
-          />
-          <button type="submit">Search</button>
-        </form>
-
-        <div class="tags">
-          {% for priority in priorities %}
-            <span class="tag">{{ priority }}</span>
-          {% endfor %}
+      <!-- ── MONEY BAR ── -->
+      <div class="money-section">
+        <div class="money-section-label">
+          <span>Filter by award size</span>
+          <span class="money-range-display" id="range-display">Any amount</span>
         </div>
 
-        <div class="results">
-          {% if results %}
-            {% for entry in results %}
-              <article class="result">
-                <h3>{{ entry.title }}</h3>
-                <div class="meta">
-                  <span>{{ entry.agency }}</span>
-                  {% if entry.category %}
-                    <span> · {{ entry.category }}</span>
-                  {% endif %}
-                  {% if entry.close_date %}
-                    <span> · Close date: {{ entry.close_date }}</span>
-                  {% endif %}
-                </div>
+        <div class="money-presets">
+          <button type="button" class="preset-btn active" onclick="applyPreset(this,0,10000000)">Any</button>
+          <button type="button" class="preset-btn" onclick="applyPreset(this,0,50000)">Under $50k</button>
+          <button type="button" class="preset-btn" onclick="applyPreset(this,50000,250000)">$50k–$250k</button>
+          <button type="button" class="preset-btn" onclick="applyPreset(this,250000,1000000)">$250k–$1M</button>
+          <button type="button" class="preset-btn" onclick="applyPreset(this,1000000,10000000)">Over $1M</button>
+        </div>
 
-                <p class="meta">
-                  <strong>Grant amount:</strong>
-                  {% if entry.award_floor and entry.award_ceiling %}
-                    ${{ entry.award_floor }}–${{ entry.award_ceiling }} per award
-                  {% elif entry.award_floor %}
-                    From ${{ entry.award_floor }} per award
-                  {% elif entry.award_ceiling %}
-                    Up to ${{ entry.award_ceiling }} per award
-                  {% else %}
-                    Not listed
-                  {% endif %}
-                  {% if entry.estimated_funding %}
-                    · Estimated total funding: ${{ entry.estimated_funding }}
-                  {% endif %}
-                </p>
+        <div class="slider-track">
+          <div class="slider-range-fill" id="range-fill"></div>
+          <input type="range" class="range-input" id="slider-min"
+                 min="0" max="10000000" step="10000" value="{{ min_award or 0 }}">
+          <input type="range" class="range-input" id="slider-max"
+                 min="0" max="10000000" step="10000" value="{{ max_award or 10000000 }}">
+        </div>
 
-                {% if entry.summary %}
-                  <p class="summary">{{ entry.summary|striptags|truncate(300, true, "…") }}</p>
-                {% else %}
-                  <p class="summary">A short description is not available. See the official announcement for details.</p>
-                {% endif %}
-
-                {% if entry.url %}
-                  <a href="{{ entry.url }}" target="_blank" rel="noreferrer">
-                    View and apply on Grants.gov
-                  </a>
-                {% endif %}
-              </article>
-            {% endfor %}
-          {% else %}
-            <p class="empty">
-              No grant opportunities found yet. Use the search form above to
-              find relevant funding sources.
-            </p>
-          {% endif %}
+        <div class="money-inputs">
+          <input type="number" id="input-min" name="min_award" placeholder="Min $"
+                 min="0" max="10000000" step="10000" value="{{ min_award or '' }}">
+          <input type="number" id="input-max" name="max_award" placeholder="Max $"
+                 min="0" max="10000000" step="10000" value="{{ max_award or '' }}">
         </div>
       </div>
-    </main>
-  </body>
+
+    </form>
+
+    <p class="kw-hint">
+      Current priorities: <strong>{{ priorities | join(', ') }}</strong> ·
+      <a href="/quiz">Guided quiz →</a> ·
+      <a href="/date">💘 Grant speed dating →</a>
+    </p>
+  </div>
+
+  <!-- Results -->
+  {% if results %}
+    <div class="results">
+      {% set MAX_AWARD = 200000000 %}
+      {% for entry in results %}
+        {% set floor   = entry.award_floor_num   | default(0) | int %}
+        {% set ceiling = entry.award_ceiling_num | default(0) | int %}
+        {% set cd = entry.close_date | string %}
+        <article class="result" data-close="{{ cd }}"
+                 data-floor="{{ floor }}" data-ceiling="{{ ceiling }}">
+
+          <h3>{{ entry.title }}</h3>
+          <div class="meta">
+            {{ entry.agency }}
+            {% if entry.category %} · {{ entry.category }}{% endif %}
+          </div>
+
+          {# Timeline bar #}
+          <div class="timeline-wrap">
+            <div class="timeline-label">
+              <span>Deadline</span>
+              <span class="deadline-badge deadline-unknown" data-badge>
+                {% if cd and cd not in ('Not specified','None','') %}{{ cd }}{% else %}Unknown{% endif %}
+              </span>
+            </div>
+            <div class="timeline-track">
+              <div class="timeline-fill fill-unknown" data-timeline-fill style="width:30%"></div>
+            </div>
+          </div>
+
+          {# Money bar — positioning done by JS log scale #}
+          {% if ceiling > 0 or floor > 0 %}
+            <div class="money-bar-wrap">
+              <div class="money-bar-label">
+                <span>Award range</span>
+                <span>
+                  {% if entry.award_floor and entry.award_ceiling %}
+                    ${{ entry.award_floor }}–${{ entry.award_ceiling }}
+                  {% elif entry.award_ceiling %}
+                    Up to ${{ entry.award_ceiling }}
+                  {% elif entry.award_floor %}
+                    From ${{ entry.award_floor }}
+                  {% endif %}
+                </span>
+              </div>
+              <div class="money-bar-bg" data-money-bar
+                   data-floor="{{ floor }}" data-ceiling="{{ ceiling }}">
+                <div class="money-bar-fill" style="margin-left:0%;width:0%"></div>
+              </div>
+              <div class="money-scale-ticks" aria-hidden="true"></div>
+            </div>
+          {% else %}
+            <div class="meta">Award amount: Not listed</div>
+          {% endif %}
+
+          {% if entry.summary %}
+            <p class="summary">{{ entry.summary | striptags | truncate(280, true, '…') }}</p>
+          {% endif %}
+
+          {% if entry.url %}
+            <a class="view-link" href="{{ entry.url }}" target="_blank" rel="noreferrer">
+              View on Grants.gov →
+            </a>
+          {% endif %}
+        </article>
+      {% endfor %}
+    </div>
+  {% elif query %}
+    <p class="empty">No results found for "<strong>{{ query }}</strong>". Try different keywords.</p>
+  {% endif %}
+
+</main>
+
+<script>
+// ── Log-scale money bars ──
+(function () {
+  // Scale: $1k → $100M log range displayed across 0–100%
+  const LOG_MIN = Math.log10(1_000);        // $1k
+  const LOG_MAX = Math.log10(100_000_000);  // $100M
+  const TICKS = [
+    [1_000,       '$1k'],
+    [10_000,      '$10k'],
+    [100_000,     '$100k'],
+    [1_000_000,   '$1M'],
+    [10_000_000,  '$10M'],
+    [100_000_000, '$100M'],
+  ];
+
+  function logPct(dollars) {
+    if (!dollars || dollars <= 0) return 0;
+    const clamped = Math.min(Math.max(dollars, 1_000), 100_000_000);
+    return ((Math.log10(clamped) - LOG_MIN) / (LOG_MAX - LOG_MIN)) * 100;
+  }
+
+  document.querySelectorAll('[data-money-bar]').forEach(bar => {
+    const floor   = parseInt(bar.dataset.floor)   || 0;
+    const ceiling = parseInt(bar.dataset.ceiling) || 0;
+    const fill    = bar.querySelector('.money-bar-fill');
+
+    const lo  = floor   > 0 ? logPct(floor)   : 0;
+    const hi  = ceiling > 0 ? logPct(ceiling)  : (floor > 0 ? logPct(floor) + 3 : 100);
+    const w   = Math.max(hi - lo, 3);
+
+    fill.style.marginLeft = lo.toFixed(1) + '%';
+    fill.style.width      = Math.min(w, 100 - lo).toFixed(1) + '%';
+
+    // Draw tick marks
+    const tickContainer = bar.nextElementSibling;
+    if (tickContainer && tickContainer.classList.contains('money-scale-ticks')) {
+      TICKS.forEach(([val, label]) => {
+        const pct = logPct(val);
+        const tick = document.createElement('span');
+        tick.className = 'money-tick';
+        tick.textContent = label;
+        tick.style.left = pct.toFixed(1) + '%';
+        tickContainer.appendChild(tick);
+      });
+    }
+  });
+})();
+
+// ── Money slider (search page) ──
+const MAX = 10_000_000;
+const sliderMin = document.getElementById('slider-min');
+const sliderMax = document.getElementById('slider-max');
+const inputMin  = document.getElementById('input-min');
+const inputMax  = document.getElementById('input-max');
+const fill      = document.getElementById('range-fill');
+const display   = document.getElementById('range-display');
+
+function fmt(n) {
+  if (n >= 1_000_000) return '$' + (n/1_000_000).toFixed(n%1_000_000===0?0:1)+'M';
+  if (n >= 1_000)     return '$' + (n/1_000).toFixed(0)+'k';
+  return '$'+n.toLocaleString();
+}
+function updateFill() {
+  const lo = parseInt(sliderMin.value), hi = parseInt(sliderMax.value);
+  fill.style.left  = (lo/MAX*100)+'%';
+  fill.style.width = ((hi-lo)/MAX*100)+'%';
+  display.textContent = (lo===0&&hi===MAX) ? 'Any amount'
+    : lo===0 ? 'Up to '+fmt(hi)
+    : hi===MAX ? fmt(lo)+' and up'
+    : fmt(lo)+' – '+fmt(hi);
+  inputMin.value = lo===0 ? '' : lo;
+  inputMax.value = hi===MAX ? '' : hi;
+  document.querySelectorAll('.preset-btn').forEach(b=>b.classList.remove('active'));
+}
+sliderMin.addEventListener('input', ()=>{ if(+sliderMin.value>+sliderMax.value-10000) sliderMin.value=+sliderMax.value-10000; updateFill(); });
+sliderMax.addEventListener('input', ()=>{ if(+sliderMax.value<+sliderMin.value+10000) sliderMax.value=+sliderMin.value+10000; updateFill(); });
+inputMin.addEventListener('change', ()=>{ sliderMin.value=inputMin.value||0; updateFill(); });
+inputMax.addEventListener('change', ()=>{ sliderMax.value=inputMax.value||MAX; updateFill(); });
+function applyPreset(btn,lo,hi){ document.querySelectorAll('.preset-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); sliderMin.value=lo; sliderMax.value=hi; updateFill(); }
+updateFill();
+
+// ── Timeline bars ──
+document.querySelectorAll('.result[data-close]').forEach(card => {
+  const rawDate = card.dataset.close;
+  const fill2   = card.querySelector('[data-timeline-fill]');
+  const badge   = card.querySelector('[data-badge]');
+  if (!fill2 || !badge) return;
+  const deadline = rawDate ? new Date(rawDate) : null;
+  const now = new Date();
+  const WINDOW = 180;
+  if (!deadline || isNaN(deadline)) return;
+  const daysLeft = Math.ceil((deadline - now) / (1000*60*60*24));
+  let fillClass, badgeClass, badgeText;
+  if (daysLeft < 0)       { fillClass='fill-urgent'; badgeClass='deadline-urgent'; badgeText='Closed'; fill2.style.width='100%'; }
+  else if (daysLeft<=14)  { fillClass='fill-urgent'; badgeClass='deadline-urgent'; badgeText=daysLeft+'d left'; fill2.style.width=Math.max(85,100-daysLeft*2)+'%'; }
+  else if (daysLeft<=60)  { fillClass='fill-soon';   badgeClass='deadline-soon';   badgeText=daysLeft+'d left'; fill2.style.width=Math.max(40,100-(daysLeft/WINDOW)*100)+'%'; }
+  else { fillClass='fill-open'; badgeClass='deadline-open';
+    badgeText=daysLeft<=365?daysLeft+'d left':deadline.toLocaleDateString('en-US',{month:'short',year:'numeric'});
+    fill2.style.width=Math.max(10,100-(daysLeft/WINDOW)*100)+'%'; }
+  fill2.className='timeline-fill '+fillClass;
+  badge.className='deadline-badge '+badgeClass;
+  badge.textContent=badgeText;
+});
+</script>
+</body>
 </html>

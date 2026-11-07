@@ -13,6 +13,7 @@
       --accent: #2563eb;
       --accent-soft: #dbeafe;
       --border: #dfe7f5;
+      --green: #16a34a;
     }
     * { box-sizing: border-box; }
     body { margin: 0; background: var(--bg); color: var(--ink); font-family: Arial, sans-serif; }
@@ -27,7 +28,7 @@
     .progress-dot.done { background: var(--accent); }
     label { display: block; font-weight: 600; margin-bottom: 8px; }
     .hint { color: var(--muted); font-size: 0.9rem; margin-bottom: 12px; }
-    input, select, textarea {
+    input[type="text"], select, textarea {
       width: 100%; padding: 12px 14px; border: 1px solid var(--border);
       border-radius: 10px; font-size: 1rem; font-family: inherit;
       margin-bottom: 20px;
@@ -40,7 +41,7 @@
     }
     .option-card:hover { border-color: var(--accent); background: var(--accent-soft); }
     .option-card.selected { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 600; }
-    .option-card input { display: none; }
+    .option-card input[type="radio"] { display: none; }
     .nav { display: flex; justify-content: space-between; margin-top: 8px; }
     .btn {
       padding: 12px 24px; border-radius: 10px; border: none;
@@ -52,6 +53,59 @@
     .btn-secondary:hover { background: #c9d8f0; }
     .error { color: red; font-size: 0.9rem; margin-bottom: 12px; }
     a { color: var(--accent); }
+
+    /* ── MONEY RANGE SLIDER (quiz step 4) ── */
+    .money-slider-wrap {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 14px; padding: 20px 20px 10px; margin-bottom: 20px;
+    }
+    .money-slider-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 14px;
+    }
+    .money-slider-header span { font-weight: 700; font-size: 1rem; }
+    .money-range-display {
+      font-size: 1.1rem; font-weight: 800; color: var(--accent);
+    }
+    .slider-track {
+      position: relative; height: 10px; background: var(--border);
+      border-radius: 999px; margin: 8px 0 20px;
+    }
+    .slider-range-fill {
+      position: absolute; height: 10px; border-radius: 999px;
+      background: linear-gradient(90deg, var(--accent), var(--green));
+      pointer-events: none;
+    }
+    .range-input {
+      position: absolute; width: 100%; height: 10px; top: 0; left: 0;
+      appearance: none; background: transparent; pointer-events: none;
+      margin: 0;
+    }
+    .range-input::-webkit-slider-thumb {
+      appearance: none; width: 20px; height: 20px; border-radius: 50%;
+      background: white; border: 3px solid var(--accent);
+      pointer-events: all; cursor: pointer;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+    }
+    .range-input::-moz-range-thumb {
+      width: 20px; height: 20px; border-radius: 50%;
+      background: white; border: 3px solid var(--accent);
+      pointer-events: all; cursor: pointer;
+    }
+    .money-presets { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+    .preset-btn {
+      font-size: 0.8rem; padding: 5px 12px; border-radius: 999px;
+      border: 1px solid var(--border); background: white;
+      cursor: pointer; font-weight: 600; color: var(--ink);
+      transition: all 0.15s;
+    }
+    .preset-btn:hover, .preset-btn.active {
+      background: var(--accent-soft); border-color: var(--accent); color: var(--accent);
+    }
+    .money-inputs { display: flex; gap: 10px; margin-top: 10px; }
+    .money-inputs input {
+      flex: 1; margin-bottom: 0; font-size: 0.9rem; padding: 8px 12px;
+    }
   </style>
 </head>
 <body>
@@ -66,19 +120,20 @@
 
     <form method="post" action="{{ url_for('quiz') }}" id="quiz-form">
 
-      <!-- Progress dots -->
+      <!-- Progress dots: now 5 steps -->
       <div class="progress">
         <div class="progress-dot" id="dot-1"></div>
         <div class="progress-dot" id="dot-2"></div>
         <div class="progress-dot" id="dot-3"></div>
         <div class="progress-dot" id="dot-4"></div>
+        <div class="progress-dot" id="dot-5"></div>
       </div>
 
       <!-- Step 1: Org type -->
       <div class="step active" id="step-1">
         <label>What type of organization are you?</label>
         <div class="options-grid">
-          {% for val, label in [
+          {% for val, lbl in [
             ('nonprofit', 'Nonprofit / NGO'),
             ('government', 'Government / Municipality'),
             ('university', 'University / Research'),
@@ -89,7 +144,7 @@
           <label class="option-card">
             <input type="radio" name="org_type" value="{{ val }}"
               {% if form.org_type == val %}checked{% endif %}>
-            {{ label }}
+            {{ lbl }}
           </label>
           {% endfor %}
         </div>
@@ -103,7 +158,7 @@
       <div class="step" id="step-2">
         <label>What is your project's primary focus?</label>
         <div class="options-grid">
-          {% for val, label in [
+          {% for val, lbl in [
             ('education', 'Education'),
             ('health', 'Health & Human Services'),
             ('justice', 'Justice & Public Safety'),
@@ -116,7 +171,7 @@
             <label class="option-card">
               <input type="radio" name="focus" value="{{ val }}"
                 {% if form.focus == val %}checked{% endif %}>
-              {{ label }}
+              {{ lbl }}
             </label>
           {% endfor %}
         </div>
@@ -130,10 +185,12 @@
       <div class="step" id="step-3">
         <label for="description">Describe your project in a few sentences.</label>
         <p class="hint">The more detail you give, the better your matches will be.</p>
-        <textarea id="description" name="description" placeholder="e.g. We are building a community stormwater retention system to reduce flooding in low-income neighborhoods...">{{ form.description }}</textarea>
+        <textarea id="description" name="description"
+          placeholder="e.g. We are building a community stormwater retention system to reduce flooding in low-income neighborhoods...">{{ form.description }}</textarea>
 
         <label for="location">Where is your project located? (optional)</label>
-        <input id="location" name="location" type="text" placeholder="e.g. North Carolina, coastal regions" value="{{ form.location }}">
+        <input type="text" id="location" name="location"
+               placeholder="e.g. North Carolina, coastal regions" value="{{ form.location }}">
 
         <div class="nav">
           <button type="button" class="btn btn-secondary" onclick="goTo(2)">Back</button>
@@ -141,26 +198,60 @@
         </div>
       </div>
 
-      <!-- Step 4: Funding amount -->
+      <!-- Step 4: Funding amount (now a money bar / slider) -->
       <div class="step" id="step-4">
         <label>How much funding are you looking for?</label>
-        <div class="options-grid">
-          {% for val, label in [
-            ('small', 'Under $50k'),
-            ('medium', '$50k – $250k'),
-            ('large', '$250k – $1M'),
-            ('xlarge', 'Over $1M'),
-            ('any', 'No preference')
-          ] %}
-          <label class="option-card">
-            <input type="radio" name="funding_size" value="{{ val }}"
-              {% if form.funding_size == val %}checked{% endif %}>
-            {{ label }}
-          </label>
-          {% endfor %}
+        <p class="hint">Drag the sliders to set your award range, or pick a preset.</p>
+
+        <div class="money-slider-wrap">
+          <div class="money-slider-header">
+            <span>Award range</span>
+            <span class="money-range-display" id="range-display">Any amount</span>
+          </div>
+
+          <!-- Quick presets -->
+          <div class="money-presets">
+            <button type="button" class="preset-btn active" data-min="0" data-max="10000000" onclick="applyPreset(this,0,10000000)">Any</button>
+            <button type="button" class="preset-btn" data-min="0" data-max="50000" onclick="applyPreset(this,0,50000)">Under $50k</button>
+            <button type="button" class="preset-btn" data-min="50000" data-max="250000" onclick="applyPreset(this,50000,250000)">$50k–$250k</button>
+            <button type="button" class="preset-btn" data-min="250000" data-max="1000000" onclick="applyPreset(this,250000,1000000)">$250k–$1M</button>
+            <button type="button" class="preset-btn" data-min="1000000" data-max="10000000" onclick="applyPreset(this,1000000,10000000)">Over $1M</button>
+          </div>
+
+          <!-- Dual-handle range slider -->
+          <div class="slider-track">
+            <div class="slider-range-fill" id="range-fill"></div>
+            <input type="range" class="range-input" id="slider-min"
+                   min="0" max="10000000" step="10000" value="0">
+            <input type="range" class="range-input" id="slider-max"
+                   min="0" max="10000000" step="10000" value="10000000">
+          </div>
+
+          <!-- Numeric inputs (synced) -->
+          <div class="money-inputs">
+            <input type="number" id="input-min" name="min_award" placeholder="Min $"
+                   min="0" max="10000000" step="10000" value="{{ form.min_award }}">
+            <input type="number" id="input-max" name="max_award" placeholder="Max $"
+                   min="0" max="10000000" step="10000" value="{{ form.max_award }}">
+          </div>
         </div>
+
+        <!-- Hidden legacy field so old server code still works -->
+        <input type="hidden" name="funding_size" value="any">
+
         <div class="nav">
           <button type="button" class="btn btn-secondary" onclick="goTo(3)">Back</button>
+          <button type="button" class="btn btn-primary" onclick="goTo(5)">Next</button>
+        </div>
+      </div>
+
+      <!-- Step 5: Review & submit -->
+      <div class="step" id="step-5">
+        <label>Ready to find your grants?</label>
+        <p class="hint">We'll search for the best-matching opportunities based on your answers.</p>
+        <p>Tap <strong>Find my grants</strong> to run the search.</p>
+        <div class="nav">
+          <button type="button" class="btn btn-secondary" onclick="goTo(4)">Back</button>
           <button type="submit" class="btn btn-primary">Find my grants →</button>
         </div>
       </div>
@@ -170,34 +261,98 @@
 </main>
 
 <script>
-  let currentStep = parseInt(document.querySelector('.step.active')?.id?.split('-')[1] || '1');
+// ── Step navigation ──
+let currentStep = 1;
 
-  function goTo(step) {
-    document.getElementById('step-' + currentStep).classList.remove('active');
-    document.getElementById('step-' + step).classList.add('active');
-    currentStep = step;
-    updateDots();
-  }
-
-  function updateDots() {
-    for (let i = 1; i <= 4; i++) {
-      const dot = document.getElementById('dot-' + i);
-      dot.classList.toggle('done', i <= currentStep);
-    }
-  }
-
-  // Highlight selected option cards
-  document.querySelectorAll('.option-card input').forEach(input => {
-    if (input.checked) input.closest('.option-card').classList.add('selected');
-    input.addEventListener('change', () => {
-      document.querySelectorAll(`input[name="${input.name}"]`).forEach(r => {
-        r.closest('.option-card').classList.remove('selected');
-      });
-      input.closest('.option-card').classList.add('selected');
-    });
-  });
-
+function goTo(step) {
+  document.getElementById('step-' + currentStep).classList.remove('active');
+  document.getElementById('step-' + step).classList.add('active');
+  currentStep = step;
   updateDots();
+}
+
+function updateDots() {
+  for (let i = 1; i <= 5; i++) {
+    document.getElementById('dot-' + i).classList.toggle('done', i <= currentStep);
+  }
+}
+
+// Highlight selected option cards
+document.querySelectorAll('.option-card input').forEach(input => {
+  if (input.checked) input.closest('.option-card').classList.add('selected');
+  input.addEventListener('change', () => {
+    document.querySelectorAll(`input[name="${input.name}"]`).forEach(r => {
+      r.closest('.option-card').classList.remove('selected');
+    });
+    input.closest('.option-card').classList.add('selected');
+  });
+});
+
+updateDots();
+
+// ── Money slider logic ──
+const MAX = 10_000_000;
+const sliderMin  = document.getElementById('slider-min');
+const sliderMax  = document.getElementById('slider-max');
+const inputMin   = document.getElementById('input-min');
+const inputMax   = document.getElementById('input-max');
+const fill       = document.getElementById('range-fill');
+const display    = document.getElementById('range-display');
+
+function fmt(n) {
+  if (n >= 1_000_000) return '$' + (n / 1_000_000).toFixed(n % 1_000_000 === 0 ? 0 : 1) + 'M';
+  if (n >= 1_000)     return '$' + (n / 1_000).toFixed(0) + 'k';
+  return '$' + n.toLocaleString();
+}
+
+function updateFill() {
+  const lo = parseInt(sliderMin.value);
+  const hi = parseInt(sliderMax.value);
+  fill.style.left  = (lo / MAX * 100) + '%';
+  fill.style.width = ((hi - lo) / MAX * 100) + '%';
+  if (lo === 0 && hi === MAX) {
+    display.textContent = 'Any amount';
+  } else if (lo === 0) {
+    display.textContent = 'Up to ' + fmt(hi);
+  } else if (hi === MAX) {
+    display.textContent = fmt(lo) + ' and up';
+  } else {
+    display.textContent = fmt(lo) + ' – ' + fmt(hi);
+  }
+  inputMin.value = lo === 0 ? '' : lo;
+  inputMax.value = hi === MAX ? '' : hi;
+  // Deactivate all presets since user dragged
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+}
+
+sliderMin.addEventListener('input', () => {
+  if (parseInt(sliderMin.value) > parseInt(sliderMax.value) - 10000)
+    sliderMin.value = parseInt(sliderMax.value) - 10000;
+  updateFill();
+});
+sliderMax.addEventListener('input', () => {
+  if (parseInt(sliderMax.value) < parseInt(sliderMin.value) + 10000)
+    sliderMax.value = parseInt(sliderMin.value) + 10000;
+  updateFill();
+});
+inputMin.addEventListener('change', () => {
+  sliderMin.value = inputMin.value || 0;
+  updateFill();
+});
+inputMax.addEventListener('change', () => {
+  sliderMax.value = inputMax.value || MAX;
+  updateFill();
+});
+
+function applyPreset(btn, lo, hi) {
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  sliderMin.value = lo;
+  sliderMax.value = hi;
+  updateFill();
+}
+
+updateFill();
 </script>
 </body>
 </html>

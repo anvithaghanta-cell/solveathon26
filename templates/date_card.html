@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Round {{ round_num }} of {{ total_rounds }} – Grant Speed Dating</title>
+  <style>
+    :root {
+      --bg: #f4f7fb; --panel: #fff; --ink: #1f2937; --muted: #6b7280;
+      --accent: #2563eb; --accent-soft: #dbeafe; --border: #dfe7f5;
+      --green: #16a34a; --green-soft: #dcfce7;
+      --red: #dc2626;   --red-soft: #fee2e2;
+      --yellow: #d97706; --yellow-soft: #fef3c7;
+      --orange: #ea580c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); font-family: Arial, sans-serif;
+      color: var(--ink); min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: flex-start; padding: 32px 16px;
+    }
+
+    /* Progress bar */
+    .progress-wrap { width: 100%; max-width: 540px; margin-bottom: 24px; }
+    .progress-header {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 0.9rem; color: var(--muted); margin-bottom: 8px;
+    }
+    .progress-header strong { color: var(--ink); }
+    .progress-bar-bg {
+      background: var(--border); border-radius: 999px; height: 8px; overflow: hidden;
+    }
+    .progress-bar-fill {
+      background: linear-gradient(90deg, var(--accent), var(--green));
+      height: 8px; border-radius: 999px;
+      transition: width 0.4s ease;
+    }
+
+    /* Grant card — swipeable feel */
+    .grant-card {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 24px; box-shadow: 0 12px 32px rgba(37,99,235,0.10);
+      padding: 32px; max-width: 540px; width: 100%;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      position: relative;
+    }
+    .grant-card:hover { box-shadow: 0 16px 40px rgba(37,99,235,0.14); }
+
+    /* Slide-out animations triggered by JS */
+    .grant-card.swipe-right {
+      animation: slideRight 0.35s ease forwards;
+    }
+    .grant-card.swipe-left {
+      animation: slideLeft 0.35s ease forwards;
+    }
+    @keyframes slideRight {
+      to { transform: translateX(120%) rotate(10deg); opacity: 0; }
+    }
+    @keyframes slideLeft {
+      to { transform: translateX(-120%) rotate(-10deg); opacity: 0; }
+    }
+
+    .agency-tag {
+      display: inline-block; background: var(--accent-soft); color: var(--accent);
+      border-radius: 999px; padding: 4px 12px; font-size: 0.8rem; font-weight: 700;
+      margin-bottom: 14px;
+    }
+    h2 { margin: 0 0 10px; font-size: 1.25rem; line-height: 1.4; }
+    .meta { color: var(--muted); font-size: 0.88rem; margin-bottom: 14px; }
+
+    /* Award range */
+    .award-row {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--green-soft); border-radius: 10px;
+      padding: 10px 14px; margin-bottom: 14px; font-size: 0.9rem;
+    }
+    .award-icon { font-size: 1.1rem; }
+    .award-text { font-weight: 700; color: var(--green); }
+
+    /* Deadline */
+    .deadline-row {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--yellow-soft); border-radius: 10px;
+      padding: 10px 14px; margin-bottom: 18px; font-size: 0.9rem;
+    }
+    .deadline-text { font-weight: 700; color: var(--yellow); }
+
+    .summary {
+      font-size: 0.95rem; line-height: 1.65; color: var(--ink);
+      margin-bottom: 20px;
+      display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .view-link {
+      font-size: 0.85rem; color: var(--accent); text-decoration: none; font-weight: 600;
+      display: block; margin-bottom: 24px;
+    }
+    .view-link:hover { text-decoration: underline; }
+
+    /* SWIPE BUTTONS */
+    .swipe-actions {
+      display: flex; gap: 16px; justify-content: center; margin-top: 4px;
+    }
+    .swipe-btn {
+      flex: 1; max-width: 200px; padding: 16px 0; border: none; border-radius: 16px;
+      font-size: 1.1rem; font-weight: 800; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: transform 0.1s, box-shadow 0.1s;
+    }
+    .swipe-btn:active { transform: scale(0.96); }
+    .btn-dislike {
+      background: var(--red-soft); color: var(--red);
+      box-shadow: 0 4px 12px rgba(220,38,38,0.15);
+    }
+    .btn-dislike:hover { background: #fecaca; box-shadow: 0 6px 16px rgba(220,38,38,0.25); }
+    .btn-like {
+      background: var(--green-soft); color: var(--green);
+      box-shadow: 0 4px 12px rgba(22,163,74,0.15);
+    }
+    .btn-like:hover { background: #bbf7d0; box-shadow: 0 6px 16px rgba(22,163,74,0.25); }
+
+    /* Liked count indicator */
+    .liked-indicator {
+      text-align: center; margin-top: 18px; font-size: 0.85rem; color: var(--muted);
+    }
+    .liked-indicator span { font-weight: 700; color: var(--green); }
+
+    /* Keyboard hint */
+    .key-hint {
+      text-align: center; margin-top: 10px; font-size: 0.78rem; color: var(--border);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Progress -->
+  <div class="progress-wrap">
+    <div class="progress-header">
+      <span>Round <strong>{{ round_num }}</strong> of {{ total_rounds }}</span>
+      <span>💘 Grant Speed Dating</span>
+    </div>
+    <div class="progress-bar-bg">
+      <div class="progress-bar-fill" id="progress-fill"></div>
+    </div>
+  </div>
+
+  <!-- Card -->
+  <div class="grant-card" id="grant-card">
+    <span class="agency-tag">{{ grant.agency }}</span>
+    <h2>{{ grant.title }}</h2>
+    <div class="meta">
+      {{ grant.category }}
+      {% if grant.close_date and grant.close_date != 'Not specified' %}
+        · Closes {{ grant.close_date }}
+      {% endif %}
+    </div>
+
+    {% set floor   = grant.award_floor_num   | default(0) | int %}
+    {% set ceiling = grant.award_ceiling_num | default(0) | int %}
+    {% if ceiling > 0 or floor > 0 %}
+      <div class="award-row">
+        <span class="award-icon">💰</span>
+        <span class="award-text">
+          {% if grant.award_floor and grant.award_ceiling %}
+            ${{ grant.award_floor }} – ${{ grant.award_ceiling }}
+          {% elif grant.award_ceiling %}
+            Up to ${{ grant.award_ceiling }}
+          {% elif grant.award_floor %}
+            From ${{ grant.award_floor }}
+          {% endif %}
+        </span>
+      </div>
+    {% endif %}
+
+    {% if grant.close_date and grant.close_date not in ('Not specified', 'None') %}
+      <div class="deadline-row">
+        <span>📅</span>
+        <span class="deadline-text" id="deadline-label">{{ grant.close_date }}</span>
+      </div>
+    {% endif %}
+
+    {% if grant.summary %}
+      <p class="summary">{{ grant.summary | striptags }}</p>
+    {% else %}
+      <p class="summary">No description available. Click below to view the full listing on Grants.gov.</p>
+    {% endif %}
+
+    {% if grant.url %}
+      <a class="view-link" href="{{ grant.url }}" target="_blank" rel="noreferrer">
+        View full listing on Grants.gov ↗
+      </a>
+    {% endif %}
+
+    <!-- Hidden form fields -->
+    <form id="swipe-form" method="post" action="/date/swipe">
+      <input type="hidden" name="grant_id" value="{{ grant.id }}">
+      <input type="hidden" name="decision" id="decision-input" value="">
+
+      <div class="swipe-actions">
+        <button type="button" class="swipe-btn btn-dislike" onclick="swipe('dislike')">
+          ✗ Pass
+        </button>
+        <button type="button" class="swipe-btn btn-like" onclick="swipe('like')">
+          ✓ Interested
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <div class="liked-indicator">
+    {% if liked_count > 0 %}
+      <span>{{ liked_count }}</span> interested so far
+    {% else %}
+      Swipe to get started
+    {% endif %}
+  </div>
+  <div class="key-hint">← / → arrow keys also work</div>
+
+<script>
+  function swipe(decision) {
+    const card = document.getElementById('grant-card');
+    document.getElementById('decision-input').value = decision;
+    card.classList.add(decision === 'like' ? 'swipe-right' : 'swipe-left');
+    setTimeout(() => document.getElementById('swipe-form').submit(), 320);
+  }
+
+  // Keyboard shortcuts
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight') swipe('like');
+    if (e.key === 'ArrowLeft')  swipe('dislike');
+  });
+
+  // Deadline countdown
+  const deadlineEl = document.getElementById('deadline-label');
+  if (deadlineEl) {
+    const d = new Date(deadlineEl.textContent.trim());
+    if (!isNaN(d)) {
+      const days = Math.ceil((d - new Date()) / 86400000);
+      if (days > 0)  deadlineEl.textContent = days + ' days left (' + deadlineEl.textContent.trim() + ')';
+      if (days <= 0) deadlineEl.textContent = 'Closed';
+    }
+  }
+</script>
+</body>
+</html>

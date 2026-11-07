@@ -17,6 +17,9 @@
       --green-soft: #dcfce7;
       --yellow: #d97706;
       --yellow-soft: #fef3c7;
+      --red: #dc2626;
+      --red-soft: #fee2e2;
+      --orange: #ea580c;
     }
     * { box-sizing: border-box; }
     body { margin: 0; background: var(--bg); color: var(--ink); font-family: Arial, sans-serif; }
@@ -53,16 +56,71 @@
     .meta { color: var(--muted); font-size: 0.9rem; margin-bottom: 12px; }
     .summary { margin: 0 0 14px; line-height: 1.6; font-size: 0.95rem; }
 
-    .match-bar-wrap { margin-bottom: 14px; }
-    .match-label { font-size: 0.8rem; color: var(--muted); margin-bottom: 4px; }
-    .match-bar-bg { background: var(--border); border-radius: 999px; height: 6px; }
-    .match-bar-fill { background: var(--accent); border-radius: 999px; height: 6px; }
+    /* Relevance bar */
+    .bar-wrap { margin-bottom: 10px; }
+    .bar-label { font-size: 0.8rem; color: var(--muted); margin-bottom: 4px; display: flex; justify-content: space-between; }
+    .bar-bg { background: var(--border); border-radius: 999px; height: 7px; }
+    .bar-fill { border-radius: 999px; height: 7px; }
+    .bar-fill-relevance { background: var(--accent); }
+
+    /* ── TIMELINE BAR ── */
+    .timeline-wrap { margin-bottom: 14px; }
+    .timeline-label { font-size: 0.8rem; color: var(--muted); margin-bottom: 4px;
+                      display: flex; justify-content: space-between; align-items: center; }
+    .deadline-badge {
+      font-size: 0.75rem; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+    }
+    .deadline-urgent  { background: var(--red-soft);    color: var(--red); }
+    .deadline-soon    { background: var(--yellow-soft);  color: var(--yellow); }
+    .deadline-open    { background: var(--green-soft);   color: var(--green); }
+    .deadline-unknown { background: var(--border);       color: var(--muted); }
+
+    .timeline-track {
+      position: relative; height: 10px; background: var(--border);
+      border-radius: 999px; overflow: hidden;
+    }
+    .timeline-fill {
+      position: absolute; left: 0; top: 0; height: 100%;
+      border-radius: 999px; transition: width 0.4s ease;
+    }
+    .fill-urgent { background: linear-gradient(90deg, var(--red), var(--orange)); }
+    .fill-soon   { background: linear-gradient(90deg, var(--orange), var(--yellow)); }
+    .fill-open   { background: linear-gradient(90deg, var(--accent), var(--green)); }
+    .fill-unknown { background: var(--muted); width: 30% !important; opacity: 0.4; }
+
+    /* ── MONEY BAR ── */
+    .money-bar-wrap { margin-bottom: 10px; }
+    .money-bar-label { font-size: 0.8rem; color: var(--muted); margin-bottom: 4px;
+                       display: flex; justify-content: space-between; }
+    .money-bar-bg { background: var(--border); border-radius: 999px; height: 7px; position: relative; overflow: hidden; }
+    .money-bar-fill { background: linear-gradient(90deg, #16a34a, #2563eb);
+                      border-radius: 999px; height: 7px; max-width: 100%;
+                      position: absolute; top: 0; }
+    .money-scale-ticks { position: relative; height: 18px; margin-top: 2px; }
+    .money-tick {
+      position: absolute; transform: translateX(-50%);
+      font-size: 0.65rem; color: var(--muted); white-space: nowrap; top: 0;
+    }
+    .money-tick::before {
+      content: ''; display: block; width: 1px; height: 5px;
+      background: var(--border); margin: 0 auto 2px;
+    }
+    .money-amount { font-size: 0.85rem; font-weight: 700; color: var(--green); margin-top: 3px; }
 
     .result a {
       display: inline-block; color: var(--accent);
       font-weight: 600; text-decoration: none; font-size: 0.95rem;
     }
     .result a:hover { text-decoration: underline; }
+
+    /* No match */
+    .no-match-box {
+      display: flex; gap: 14px; align-items: flex-start;
+      background: var(--yellow-soft); border: 1px solid var(--yellow);
+      border-radius: 12px; padding: 18px; margin-bottom: 20px;
+    }
+    .no-match-icon { font-size: 1.5rem; }
+    .no-match-box p { margin: 4px 0 0; font-size: 0.9rem; }
 
     /* Footer actions */
     .actions { display: flex; gap: 12px; margin-top: 32px; flex-wrap: wrap; }
@@ -92,6 +150,7 @@
         {% endfor %}
       </div>
     </div>
+
     {% set min_score = terms | length %}
     {% set has_full_match = results | selectattr('score', 'ge', min_score) | list | length > 0 %}
 
@@ -107,6 +166,7 @@
         </div>
       </div>
     {% endif %}
+
     <div class="results">
       {% if results %}
         {% for entry in results %}
@@ -123,37 +183,74 @@
             {% set rank_label = "Possible match" %}
           {% endif %}
 
-          <article class="result">
-            <span class="result-rank {{ rank_class }}">{{ rank_label }}</span>
+          {# ── DEADLINE / TIMELINE logic ── #}
+          {% set cd = entry.close_date | string %}
+          {% set deadline_days = entry.deadline_days | default(-1) %}
 
+          <article class="result"
+            data-close="{{ cd }}"
+            data-floor="{{ entry.award_floor_num | default(0) }}"
+            data-ceiling="{{ entry.award_ceiling_num | default(0) }}">
+
+            <span class="result-rank {{ rank_class }}">{{ rank_label }}</span>
             <h3>{{ entry.title }}</h3>
+
             <div class="meta">
               <span>{{ entry.agency }}</span>
               {% if entry.category %}<span> · {{ entry.category }}</span>{% endif %}
-              {% if entry.close_date %}<span> · Closes: {{ entry.close_date }}</span>{% endif %}
             </div>
 
-            <div class="meta">
-              <strong>Grant amount:</strong>
-              {% if entry.award_floor and entry.award_ceiling %}
-                ${{ entry.award_floor }}–${{ entry.award_ceiling }} per award
-              {% elif entry.award_floor %}
-                From ${{ entry.award_floor }} per award
-              {% elif entry.award_ceiling %}
-                Up to ${{ entry.award_ceiling }} per award
-              {% else %}
-                Not listed
-              {% endif %}
-              {% if entry.estimated_funding %}
-                · Estimated total funding: ${{ entry.estimated_funding }}
-              {% endif %}
+            {# ── TIMELINE BAR ── rendered by JS below #}
+            <div class="timeline-wrap">
+              <div class="timeline-label">
+                <span>Deadline</span>
+                <span class="deadline-badge deadline-unknown" data-badge>
+                  {% if cd and cd != 'Not specified' and cd != 'None' %}{{ cd }}{% else %}Unknown{% endif %}
+                </span>
+              </div>
+              <div class="timeline-track">
+                <div class="timeline-fill fill-unknown" data-timeline-fill style="width:30%"></div>
+              </div>
             </div>
 
+            {# ── MONEY BAR ── #}
+            {% set floor   = entry.award_floor_num   | default(0) | int %}
+            {% set ceiling = entry.award_ceiling_num | default(0) | int %}
+            {% set MAX_AWARD = 200000000 %}
+            {% if ceiling > 0 or floor > 0 %}
+              <div class="money-bar-wrap">
+                <div class="money-bar-label">
+                  <span>Award range</span>
+                  <span>
+                    {% if entry.award_floor and entry.award_ceiling %}
+                      ${{ entry.award_floor }}–${{ entry.award_ceiling }}
+                    {% elif entry.award_floor %}
+                      From ${{ entry.award_floor }}
+                    {% elif entry.award_ceiling %}
+                      Up to ${{ entry.award_ceiling }}
+                    {% endif %}
+                  </span>
+                </div>
+                <div class="money-bar-bg" data-money-bar
+                     data-floor="{{ floor }}" data-ceiling="{{ ceiling }}">
+                  <div class="money-bar-fill" style="margin-left:0%;width:0%"></div>
+                </div>
+                <div class="money-scale-ticks" aria-hidden="true"></div>
+              </div>
+            {% else %}
+              <div class="meta" style="margin-bottom:12px;">Award amount: Not listed</div>
+            {% endif %}
+
+            {% if entry.estimated_funding %}
+              <div class="meta">Estimated total funding: ${{ entry.estimated_funding }}</div>
+            {% endif %}
+
+            {# Relevance bar #}
             {% if entry.score > 0 %}
-              <div class="match-bar-wrap">
-                <div class="match-label">Relevance</div>
-                <div class="match-bar-bg">
-                  <div class="match-bar-fill" style="width: {{ pct }}%"></div>
+              <div class="bar-wrap">
+                <div class="bar-label"><span>Relevance</span><span>{{ pct }}%</span></div>
+                <div class="bar-bg">
+                  <div class="bar-fill bar-fill-relevance" data-relevance-width="{{ pct }}"></div>
                 </div>
               </div>
             {% endif %}
@@ -183,5 +280,96 @@
 
   </div>
 </main>
+
+<script>
+// Set relevance widths outside inline CSS so template values are not parsed as CSS.
+document.querySelectorAll('[data-relevance-width]').forEach(fill => {
+  fill.style.width = `${fill.dataset.relevanceWidth}%`;
+});
+
+// ── Log-scale money bars ──
+(function () {
+  const LOG_MIN = Math.log10(1_000);
+  const LOG_MAX = Math.log10(100_000_000);
+  const TICKS = [
+    [1_000,       '$1k'],
+    [10_000,      '$10k'],
+    [100_000,     '$100k'],
+    [1_000_000,   '$1M'],
+    [10_000_000,  '$10M'],
+    [100_000_000, '$100M'],
+  ];
+  function logPct(d) {
+    if (!d || d <= 0) return 0;
+    return ((Math.log10(Math.min(Math.max(d, 1_000), 100_000_000)) - LOG_MIN) / (LOG_MAX - LOG_MIN)) * 100;
+  }
+  document.querySelectorAll('[data-money-bar]').forEach(bar => {
+    const floor   = parseInt(bar.dataset.floor)   || 0;
+    const ceiling = parseInt(bar.dataset.ceiling) || 0;
+    const fill    = bar.querySelector('.money-bar-fill');
+    const lo = floor   > 0 ? logPct(floor)   : 0;
+    const hi = ceiling > 0 ? logPct(ceiling)  : (floor > 0 ? logPct(floor) + 3 : 100);
+    fill.style.marginLeft = lo.toFixed(1) + '%';
+    fill.style.width = Math.min(Math.max(hi - lo, 3), 100 - lo).toFixed(1) + '%';
+    const tickContainer = bar.nextElementSibling;
+    if (tickContainer?.classList.contains('money-scale-ticks')) {
+      TICKS.forEach(([val, label]) => {
+        const tick = document.createElement('span');
+        tick.className = 'money-tick';
+        tick.textContent = label;
+        tick.style.left = logPct(val).toFixed(1) + '%';
+        tickContainer.appendChild(tick);
+      });
+    }
+  });
+})();
+
+// ── TIMELINE BAR: compute days remaining and colour each card ──
+document.querySelectorAll('.result[data-close]').forEach(card => {
+  const rawDate = card.dataset.close;
+  const fill    = card.querySelector('[data-timeline-fill]');
+  const badge   = card.querySelector('[data-badge]');
+  if (!fill || !badge) return;
+
+  // Try to parse the deadline string into a Date
+  const deadline = rawDate ? new Date(rawDate) : null;
+  const now = new Date();
+  const WINDOW = 180; // days we show on the bar
+
+  if (!deadline || isNaN(deadline)) {
+    // unknown — leave default grey
+    return;
+  }
+
+  const daysLeft = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
+
+  // Determine urgency
+  let fillClass, badgeClass, badgeText;
+  if (daysLeft < 0) {
+    fillClass = 'fill-urgent'; badgeClass = 'deadline-urgent'; badgeText = 'Closed';
+    fill.style.width = '100%';
+  } else if (daysLeft <= 14) {
+    fillClass = 'fill-urgent'; badgeClass = 'deadline-urgent';
+    badgeText = `${daysLeft}d left`;
+    // Bar shows how much time has elapsed — nearly full
+    fill.style.width = Math.max(85, 100 - daysLeft * 2) + '%';
+  } else if (daysLeft <= 60) {
+    fillClass = 'fill-soon'; badgeClass = 'deadline-soon';
+    badgeText = `${daysLeft}d left`;
+    fill.style.width = Math.max(40, 100 - (daysLeft / WINDOW) * 100) + '%';
+  } else {
+    fillClass = 'fill-open'; badgeClass = 'deadline-open';
+    badgeText = daysLeft <= 365
+      ? `${daysLeft}d left`
+      : deadline.toLocaleDateString('en-US', {month:'short', year:'numeric'});
+    fill.style.width = Math.max(10, 100 - (daysLeft / WINDOW) * 100) + '%';
+  }
+
+  // Apply classes
+  fill.className = `timeline-fill ${fillClass}`;
+  badge.className = `deadline-badge ${badgeClass}`;
+  badge.textContent = badgeText;
+});
+</script>
 </body>
 </html>
