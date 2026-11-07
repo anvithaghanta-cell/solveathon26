@@ -51,6 +51,17 @@
     .rank-high { background: var(--green-soft); color: var(--green); }
     .rank-mid  { background: var(--yellow-soft); color: var(--yellow); }
     .rank-low  { background: var(--border); color: var(--muted); }
+    .rank-perfect { background: var(--green-soft); color: var(--green); }
+    .result.perfect-match { border-color: #86efac; background: #f0fdf4; }
+    .section-label {
+      margin: 18px 0 4px; font-size: 1.05rem; font-weight: 700;
+    }
+    .divider { border: none; border-top: 1px dashed var(--border); margin: 18px 0 4px; }
+    .notice {
+      display: flex; gap: 12px; align-items: flex-start;
+      border-radius: 12px; padding: 16px; margin-bottom: 20px;
+    }
+    .notice-success { background: var(--green-soft); border: 1px solid #86efac; }
 
     .result h3 { margin: 0 0 8px; padding-right: 90px; font-size: 1.05rem; }
     .meta { color: var(--muted); font-size: 0.9rem; margin-bottom: 12px; }
@@ -152,9 +163,17 @@
     </div>
 
     {% set min_score = terms | length %}
-    {% set has_full_match = results | selectattr('score', 'ge', min_score) | list | length > 0 %}
+    {% set perfect_count = results | selectattr('score', 'ge', min_score) | list | length %}
 
-    {% if not has_full_match %}
+    {% if perfect_count %}
+      <div class="notice notice-success">
+        <span aria-hidden="true">✅</span>
+        <div>
+          <strong>{{ perfect_count }} grant{{ 's' if perfect_count != 1 else '' }} match all of your criteria.</strong>
+          <p>Additional close matches are listed below.</p>
+        </div>
+      </div>
+    {% else %}
       <div class="no-match-box">
         <span class="no-match-icon">⚠️</span>
         <div>
@@ -166,13 +185,27 @@
         </div>
       </div>
     {% endif %}
+    {% if funding_size and funding_size != 'any' %}
+      <p class="meta">Funding range: {{ funding_size | title }}</p>
+    {% endif %}
 
     <div class="results">
       {% if results %}
         {% for entry in results %}
+          {% if loop.first %}
+            <h2 class="section-label">
+              {{ 'Full matches' if entry.score >= min_score else 'Closest matches' }}
+            </h2>
+          {% elif entry.score < min_score and results[loop.index0 - 1].score >= min_score %}
+            <hr class="divider">
+            <h2 class="section-label">Closest matches</h2>
+          {% endif %}
           {% set max_score = results[0].score if results[0].score > 0 else 1 %}
           {% set pct = ((entry.score / max_score) * 100) | int %}
-          {% if pct >= 60 %}
+          {% if entry.score >= min_score %}
+            {% set rank_class = "rank-perfect" %}
+            {% set rank_label = "Full match" %}
+          {% elif pct >= 60 %}
             {% set rank_class = "rank-high" %}
             {% set rank_label = "Strong match" %}
           {% elif pct >= 30 %}
@@ -187,7 +220,7 @@
           {% set cd = entry.close_date | string %}
           {% set deadline_days = entry.deadline_days | default(-1) %}
 
-          <article class="result"
+          <article class="result{{ ' perfect-match' if entry.score >= min_score else '' }}"
             data-close="{{ cd }}"
             data-floor="{{ entry.award_floor_num | default(0) }}"
             data-ceiling="{{ entry.award_ceiling_num | default(0) }}">

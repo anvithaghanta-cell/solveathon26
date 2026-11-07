@@ -33,6 +33,14 @@ AGENCY_PRIORITIES = ["water", "flood", "resilience", "infrastructure"]
 DATING_ROUNDS     = 5
 DATING_POOL_SIZE  = 30
 
+FUNDING_RANGES = {
+    "small":  (0, 50_000),
+    "medium": (50_000, 250_000),
+    "large":  (250_000, 1_000_000),
+    "xlarge": (1_000_000, float("inf")),
+    "any":    (0, float("inf")),
+}
+
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -134,6 +142,36 @@ def find_opportunities_for_terms(terms: list[str], limit: int = 20) -> list[dict
 
 # ── Main routes ───────────────────────────────────────────────────────────────
 
+
+def parse_dollar(value: str) -> Any:
+    """Convert a formatted dollar string like '$1,000,000' to a float."""
+    if not value:
+        return None
+    cleaned = re.sub(r"[^\d.]", "", value)
+    try:
+        return float(cleaned)
+    except ValueError:
+        return None
+
+
+def within_funding_range(result: dict, funding_size: str) -> bool:
+    """Return True if the grant's award range overlaps with the user's desired range."""
+    if not funding_size or funding_size not in FUNDING_RANGES or funding_size == "any":
+        return True
+
+    user_min, user_max = FUNDING_RANGES[funding_size]
+    ceiling = parse_dollar(result.get("award_ceiling", ""))
+    floor = parse_dollar(result.get("award_floor", ""))
+
+    # If no funding data available, don't filter it out
+    if ceiling is None and floor is None:
+        return True
+
+    grant_max = ceiling if ceiling is not None else floor
+    grant_min = floor if floor is not None else 0
+
+    return grant_min <= user_max and grant_max >= user_min
+
 @app.get("/")
 def index():
     return render_template("index.html", priorities=AGENCY_PRIORITIES,
@@ -162,7 +200,10 @@ def search():
                            min_award=min_award, max_award=max_award)
 
 
-def extract_terms(org_type, focus, description, location):
+def extract_terms(org_type: str, focus: str, description: str, location: str) -> list[str]:
+    """Build a ranked list of search terms from quiz answers."""
+    terms = []
+
     focus_map = {
         "education":     ["education", "school", "community college", "workforce training"],
         "health":        ["health", "human services", "mental health", "public health"],
@@ -173,27 +214,53 @@ def extract_terms(org_type, focus, description, location):
         "housing":       ["housing", "affordable housing", "community development"],
         "technology":    ["technology", "digital", "broadband", "cybersecurity"],
     }
+    if focus:
+        terms.extend(focus_map.get(focus, [focus]))
+
     org_map = {
         "nonprofit": ["nonprofit", "community"], "government": ["municipality", "local government"],
         "university": ["research", "university"], "business": ["small business"],
         "tribal": ["tribal", "indigenous"], "individual": [],
     }
-    stopwords = {"that","this","with","from","will","have","been","they","them","their","also","into","more","some"}
-    terms = list(focus_map.get(focus, [focus])) + list(org_map.get(org_type, []))
+    terms.extend(org_map.get(org_type, []))
+
+    stopwords = {"that", "this", "with", "from", "will", "have", "been",
+                 "they", "them", "their", "also", "into", "more", "some"}
     if description:
-        terms += [w for w in re.findall(r"[a-zA-Z]{4,}", description.lower()) if w not in stopwords]
+        words = re.findall(r"[a-zA-Z]{4,}", description.lower())
+        desc_words = [w for w in words if w not in stopwords]
+        terms.extend(desc_words[:3])
+
     if location:
         terms.append(location.strip())
-    seen, unique = set(), []
+
+    seen = set()
+    unique = []
     for t in terms:
         if t not in seen:
             seen.add(t); unique.append(t)
     return unique
 
 
-def score_result(result, terms):
-    text = " ".join([result.get(k,"") for k in ("title","summary","agency","category")]).lower()
-    return sum(1 for t in terms if t.lower() in text)
+def score_result(result: dict, terms: list[str]) -> int:
+    """Score a grant result by how many search terms appear in its text."""
+    text = " ".join([
+        result.get("title", ""),
+        result.get("summary", ""),
+        result.get("agency", ""),
+        result.get("category", ""),
+    ]).lower()
+
+    score = 0
+    for term in terms:
+        term_lower = term.lower()
+        if term_lower in text or any(
+            word.startswith(term_lower) or term_lower.startswith(word)
+            for word in text.split()
+            if len(word) >= 4
+        ):
+            score += 1
+    return score
 
 
 @app.route("/quiz", methods=["GET", "POST"])
@@ -202,12 +269,14 @@ def quiz():
     if request.method == "GET":
         return render_template("quiz.html", priorities=AGENCY_PRIORITIES, error=None, form=empty, current_step=1)
 
-    org_type    = request.form.get("org_type","").strip()
-    focus       = request.form.get("focus","").strip()
-    description = request.form.get("description","").strip()
-    location    = request.form.get("location","").strip()
-    min_award   = request.form.get("min_award","").strip()
-    max_award   = request.form.get("max_award","").strip()
+    # Collect form values
+    org_type = request.form.get("org_type", "").strip()
+    focus = request.form.get("focus", "").strip()
+    description = request.form.get("description", "").strip()
+    location = request.form.get("location", "").strip()
+    funding_size = request.form.get("funding_size", "").strip()
+    min_award = request.form.get("min_award", "").strip()
+    max_award = request.form.get("max_award", "").strip()
 
     if not org_type or not focus:
         return render_template("quiz.html", priorities=AGENCY_PRIORITIES,
@@ -229,7 +298,16 @@ def quiz():
     except ValueError:
         pass
 
-    return render_template("quiz_results.html", terms=terms[:5], results=results)
+    # Filter by funding size
+    if funding_size and funding_size != "any":
+        results = [r for r in results if within_funding_range(r, funding_size)]
+
+    return render_template(
+        "quiz_results.html",
+        terms=terms[:5],
+        results=results,
+        funding_size=funding_size,
+    )
 
 
 @app.get("/api/search")
