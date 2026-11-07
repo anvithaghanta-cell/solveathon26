@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Your Grant Matches</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --panel: #ffffff;
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --accent: #2563eb;
+      --accent-soft: #dbeafe;
+      --border: #dfe7f5;
+      --green: #16a34a;
+      --green-soft: #dcfce7;
+      --yellow: #d97706;
+      --yellow-soft: #fef3c7;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font-family: Arial, sans-serif; }
+    main { max-width: 780px; margin: 48px auto; padding: 24px; }
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 16px;
+             box-shadow: 0 8px 16px rgba(37,99,235,0.06); padding: 32px; }
+
+    /* Header */
+    .header { margin-bottom: 28px; }
+    .header h1 { margin: 0 0 8px; }
+    .header p { margin: 0; color: var(--muted); }
+    .summary-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+    .tag {
+      background: var(--accent-soft); color: var(--accent);
+      border-radius: 999px; padding: 5px 12px; font-size: 0.85rem; font-weight: 600;
+    }
+
+    /* Result cards */
+    .results { display: grid; gap: 20px; margin-top: 8px; }
+    .result {
+      border: 1px solid var(--border); border-radius: 14px;
+      padding: 22px; background: #fafcff; position: relative;
+    }
+    .result-rank {
+      position: absolute; top: 18px; right: 18px;
+      font-size: 0.8rem; font-weight: 700; padding: 4px 10px;
+      border-radius: 999px;
+    }
+    .rank-high { background: var(--green-soft); color: var(--green); }
+    .rank-mid  { background: var(--yellow-soft); color: var(--yellow); }
+    .rank-low  { background: var(--border); color: var(--muted); }
+
+    .result h3 { margin: 0 0 8px; padding-right: 90px; font-size: 1.05rem; }
+    .meta { color: var(--muted); font-size: 0.9rem; margin-bottom: 12px; }
+    .summary { margin: 0 0 14px; line-height: 1.6; font-size: 0.95rem; }
+
+    .match-bar-wrap { margin-bottom: 14px; }
+    .match-label { font-size: 0.8rem; color: var(--muted); margin-bottom: 4px; }
+    .match-bar-bg { background: var(--border); border-radius: 999px; height: 6px; }
+    .match-bar-fill { background: var(--accent); border-radius: 999px; height: 6px; }
+
+    .result a {
+      display: inline-block; color: var(--accent);
+      font-weight: 600; text-decoration: none; font-size: 0.95rem;
+    }
+    .result a:hover { text-decoration: underline; }
+
+    /* Footer actions */
+    .actions { display: flex; gap: 12px; margin-top: 32px; flex-wrap: wrap; }
+    .btn {
+      padding: 12px 22px; border-radius: 10px; border: none;
+      font-size: 0.95rem; font-weight: 600; cursor: pointer; text-decoration: none;
+      display: inline-block;
+    }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-secondary { background: var(--border); color: var(--ink); }
+    .btn-secondary:hover { background: #c9d8f0; }
+
+    .empty { color: var(--muted); padding: 24px 0; text-align: center; }
+  </style>
+</head>
+<body>
+<main>
+  <div class="panel">
+
+    <div class="header">
+      <h1>Your grant matches</h1>
+      <p>Based on your answers, here are the most relevant funding opportunities we found.</p>
+      <div class="summary-tags">
+        {% for tag in terms %}
+          <span class="tag">{{ tag }}</span>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="results">
+      {% if results %}
+        {% for entry in results %}
+          {% set max_score = results[0].score if results[0].score > 0 else 1 %}
+          {% set pct = ((entry.score / max_score) * 100) | int %}
+          {% if pct >= 60 %}
+            {% set rank_class = "rank-high" %}
+            {% set rank_label = "Strong match" %}
+          {% elif pct >= 30 %}
+            {% set rank_class = "rank-mid" %}
+            {% set rank_label = "Good match" %}
+          {% else %}
+            {% set rank_class = "rank-low" %}
+            {% set rank_label = "Possible match" %}
+          {% endif %}
+
+          <article class="result">
+            <span class="result-rank {{ rank_class }}">{{ rank_label }}</span>
+
+            <h3>{{ entry.title }}</h3>
+            <div class="meta">
+              <span>{{ entry.agency }}</span>
+              {% if entry.category %}<span> · {{ entry.category }}</span>{% endif %}
+              {% if entry.close_date %}<span> · Closes: {{ entry.close_date }}</span>{% endif %}
+            </div>
+
+            {% if entry.score > 0 %}
+              <div class="match-bar-wrap">
+                <div class="match-label">Relevance</div>
+                <div class="match-bar-bg">
+                  <div class="match-bar-fill" style="width: {{ pct }}%"></div>
+                </div>
+              </div>
+            {% endif %}
+
+            {% if entry.summary %}
+              <p class="summary">{{ entry.summary[:300] }}{% if entry.summary|length > 300 %}…{% endif %}</p>
+            {% endif %}
+
+            {% if entry.url %}
+              <a href="{{ entry.url }}" target="_blank" rel="noreferrer">View opportunity →</a>
+            {% endif %}
+          </article>
+        {% endfor %}
+
+      {% else %}
+        <p class="empty">No matches found. Try adjusting your answers or
+          <a href="/quiz">retaking the quiz</a>.</p>
+      {% endif %}
+    </div>
+
+    <div class="actions">
+      <a href="/quiz" class="btn btn-primary">Retake the quiz</a>
+      <a href="/" class="btn btn-secondary">Search manually</a>
+    </div>
+
+  </div>
+</main>
+</body>
+</html>

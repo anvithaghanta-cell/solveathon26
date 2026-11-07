@@ -1,14 +1,203 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Grant Finder Quiz</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Find Grants – Quiz</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --panel: #ffffff;
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --accent: #2563eb;
+      --accent-soft: #dbeafe;
+      --border: #dfe7f5;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font-family: Arial, sans-serif; }
+    main { max-width: 680px; margin: 48px auto; padding: 24px; }
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 16px;
+             box-shadow: 0 8px 16px rgba(37,99,235,0.06); padding: 32px; }
+    h1 { margin-top: 0; }
+    .step { display: none; }
+    .step.active { display: block; }
+    .progress { display: flex; gap: 8px; margin-bottom: 28px; }
+    .progress-dot { flex: 1; height: 6px; border-radius: 999px; background: var(--border); }
+    .progress-dot.done { background: var(--accent); }
+    label { display: block; font-weight: 600; margin-bottom: 8px; }
+    .hint { color: var(--muted); font-size: 0.9rem; margin-bottom: 12px; }
+    input, select, textarea {
+      width: 100%; padding: 12px 14px; border: 1px solid var(--border);
+      border-radius: 10px; font-size: 1rem; font-family: inherit;
+      margin-bottom: 20px;
+    }
+    textarea { resize: vertical; min-height: 100px; }
+    .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+    .option-card {
+      border: 2px solid var(--border); border-radius: 10px; padding: 14px;
+      cursor: pointer; text-align: center; font-size: 0.95rem; transition: all 0.15s;
+    }
+    .option-card:hover { border-color: var(--accent); background: var(--accent-soft); }
+    .option-card.selected { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+    .option-card input { display: none; }
+    .nav { display: flex; justify-content: space-between; margin-top: 8px; }
+    .btn {
+      padding: 12px 24px; border-radius: 10px; border: none;
+      font-size: 1rem; font-weight: 600; cursor: pointer;
+    }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-secondary { background: var(--border); color: var(--ink); }
+    .btn-secondary:hover { background: #c9d8f0; }
+    .error { color: red; font-size: 0.9rem; margin-bottom: 12px; }
+    a { color: var(--accent); }
+  </style>
 </head>
 <body>
-  <h1>Find Grants for Your Project</h1>
-  <p>Your quiz page is working. Add your questions here.</p>
-  <a href="/">Back to the home page</a>
+<main>
+  <div class="panel">
+    <h1>Find the right grant</h1>
+    <p>Answer a few quick questions and we'll match you with relevant funding opportunities.</p>
+
+    {% if error %}
+      <p class="error">{{ error }}</p>
+    {% endif %}
+
+    <form method="post" action="{{ url_for('quiz') }}" id="quiz-form">
+
+      <!-- Progress dots -->
+      <div class="progress">
+        <div class="progress-dot" id="dot-1"></div>
+        <div class="progress-dot" id="dot-2"></div>
+        <div class="progress-dot" id="dot-3"></div>
+        <div class="progress-dot" id="dot-4"></div>
+      </div>
+
+      <!-- Step 1: Org type -->
+      <div class="step active" id="step-1">
+        <label>What type of organization are you?</label>
+        <div class="options-grid">
+          {% for val, label in [
+            ('nonprofit', 'Nonprofit / NGO'),
+            ('government', 'Government / Municipality'),
+            ('university', 'University / Research'),
+            ('business', 'Small Business'),
+            ('tribal', 'Tribal Nation'),
+            ('individual', 'Individual')
+          ] %}
+          <label class="option-card">
+            <input type="radio" name="org_type" value="{{ val }}"
+              {% if form.org_type == val %}checked{% endif %}>
+            {{ label }}
+          </label>
+          {% endfor %}
+        </div>
+        <div class="nav">
+          <a href="/">← Back to search</a>
+          <button type="button" class="btn btn-primary" onclick="goTo(2)">Next</button>
+        </div>
+      </div>
+
+      <!-- Step 2: Focus area -->
+      <div class="step" id="step-2">
+        <label>What is your project's primary focus?</label>
+        <div class="options-grid">
+          {% for val, label in [
+            ('water', 'Water & Watersheds'),
+            ('flood', 'Flood & Stormwater'),
+            ('resilience', 'Climate Resilience'),
+            ('infrastructure', 'Infrastructure'),
+            ('health', 'Public Health'),
+            ('education', 'Education'),
+            ('housing', 'Housing'),
+            ('environment', 'Environment')
+          ] %}
+          <label class="option-card">
+            <input type="radio" name="focus" value="{{ val }}"
+              {% if form.focus == val %}checked{% endif %}>
+            {{ label }}
+          </label>
+          {% endfor %}
+        </div>
+        <div class="nav">
+          <button type="button" class="btn btn-secondary" onclick="goTo(1)">Back</button>
+          <button type="button" class="btn btn-primary" onclick="goTo(3)">Next</button>
+        </div>
+      </div>
+
+      <!-- Step 3: Project description -->
+      <div class="step" id="step-3">
+        <label for="description">Describe your project in a few sentences.</label>
+        <p class="hint">The more detail you give, the better your matches will be.</p>
+        <textarea id="description" name="description" placeholder="e.g. We are building a community stormwater retention system to reduce flooding in low-income neighborhoods...">{{ form.description }}</textarea>
+
+        <label for="location">Where is your project located? (optional)</label>
+        <input id="location" name="location" type="text" placeholder="e.g. North Carolina, coastal regions" value="{{ form.location }}">
+
+        <div class="nav">
+          <button type="button" class="btn btn-secondary" onclick="goTo(2)">Back</button>
+          <button type="button" class="btn btn-primary" onclick="goTo(4)">Next</button>
+        </div>
+      </div>
+
+      <!-- Step 4: Funding amount -->
+      <div class="step" id="step-4">
+        <label>How much funding are you looking for?</label>
+        <div class="options-grid">
+          {% for val, label in [
+            ('small', 'Under $50k'),
+            ('medium', '$50k – $250k'),
+            ('large', '$250k – $1M'),
+            ('xlarge', 'Over $1M'),
+            ('any', 'No preference')
+          ] %}
+          <label class="option-card">
+            <input type="radio" name="funding_size" value="{{ val }}"
+              {% if form.funding_size == val %}checked{% endif %}>
+            {{ label }}
+          </label>
+          {% endfor %}
+        </div>
+        <div class="nav">
+          <button type="button" class="btn btn-secondary" onclick="goTo(3)">Back</button>
+          <button type="submit" class="btn btn-primary">Find my grants →</button>
+        </div>
+      </div>
+
+    </form>
+  </div>
+</main>
+
+<script>
+  let currentStep = parseInt(document.querySelector('.step.active')?.id?.split('-')[1] || '1');
+
+  function goTo(step) {
+    document.getElementById('step-' + currentStep).classList.remove('active');
+    document.getElementById('step-' + step).classList.add('active');
+    currentStep = step;
+    updateDots();
+  }
+
+  function updateDots() {
+    for (let i = 1; i <= 4; i++) {
+      const dot = document.getElementById('dot-' + i);
+      dot.classList.toggle('done', i <= currentStep);
+    }
+  }
+
+  // Highlight selected option cards
+  document.querySelectorAll('.option-card input').forEach(input => {
+    if (input.checked) input.closest('.option-card').classList.add('selected');
+    input.addEventListener('change', () => {
+      document.querySelectorAll(`input[name="${input.name}"]`).forEach(r => {
+        r.closest('.option-card').classList.remove('selected');
+      });
+      input.closest('.option-card').classList.add('selected');
+    });
+  });
+
+  updateDots();
+</script>
 </body>
 </html>
-

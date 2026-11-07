@@ -1,8 +1,9 @@
 import os
 from typing import Any
-
+import re
 import requests
 from flask import Flask, jsonify, render_template, request
+
 
 app = Flask(__name__)
 
@@ -97,41 +98,97 @@ def search():
     )
 
 
+def extract_terms(org_type: str, focus: str, description: str, location: str) -> list[str]:
+    """Build a ranked list of search terms from quiz answers."""
+    terms = []
+
+    # Focus area is the primary term
+    if focus:
+        terms.append(focus)
+
+    # Map org type to relevant grant terms
+    org_map = {
+        "nonprofit": ["nonprofit", "community"],
+        "government": ["municipality", "local government"],
+        "university": ["research", "university"],
+        "business": ["small business"],
+        "tribal": ["tribal", "indigenous"],
+        "individual": [],
+    }
+    terms.extend(org_map.get(org_type, []))
+
+    # Pull meaningful words from the description (4+ chars, not stopwords)
+    stopwords = {"that", "this", "with", "from", "will", "have", "been",
+                 "they", "them", "their", "also", "into", "more", "some"}
+    if description:
+        words = re.findall(r"[a-zA-Z]{4,}", description.lower())
+        terms.extend(w for w in words if w not in stopwords)
+
+    # Add location if provided
+    if location:
+        terms.append(location.strip())
+
+    # Deduplicate while preserving order
+    seen = set()
+    unique = []
+    for t in terms:
+        if t not in seen:
+            seen.add(t)
+            unique.append(t)
+
+    return unique
+
+
+def score_result(result: dict, terms: list[str]) -> int:
+    """Score a grant result by how many search terms appear in its text."""
+    text = " ".join([
+        result.get("title", ""),
+        result.get("summary", ""),
+        result.get("agency", ""),
+        result.get("category", ""),
+    ]).lower()
+
+    return sum(1 for term in terms if term.lower() in text)
+
+
 @app.route("/quiz", methods=["GET", "POST"])
 def quiz():
+    empty_form = {
+        "org_type": "", "focus": "", "description": "", "location": "", "funding_size": ""
+    }
+
     if request.method == "GET":
-        return render_template(
-            "quiz.html",
-            priorities=AGENCY_PRIORITIES,
-            error=None,
-        )
+        return render_template("quiz.html", priorities=AGENCY_PRIORITIES,
+                               error=None, form=empty_form, current_step=1)
 
-    focus = request.form.get("focus", "").strip().lower()
-    raw_keywords = request.form.get("keywords", "").strip()
+    # Collect form values
+    org_type = request.form.get("org_type", "").strip()
+    focus = request.form.get("focus", "").strip()
+    description = request.form.get("description", "").strip()
+    location = request.form.get("location", "").strip()
+    #funding_size = request.form.get("funding_size", "").strip()
 
-    if focus not in AGENCY_PRIORITIES:
-        return render_template(
-            "quiz.html",
-            priorities=AGENCY_PRIORITIES,
-            error="Please choose a project focus area.",
-        )
+    # Validate required fields
+    if not org_type or not focus:
+        return render_template("quiz.html", priorities=AGENCY_PRIORITIES,
+                               error="Please select your organization type and project focus.",
+                               form=request.form, current_step=1)
 
-    # Search for the selected focus and any extra project keywords.
-    terms = [focus]
-    terms.extend(
-        term.strip()
-        for term in raw_keywords.split(",")
-        if term.strip()
-    )
+    # Build search terms and fetch results
+    terms = extract_terms(org_type, focus, description, location)
+    results = find_opportunities_for_terms(terms[:5])  # top 5 terms to avoid too many API calls
 
-    results = find_opportunities_for_terms(terms)
+    # Score and sort results by relevance
+    for result in results:
+        result["score"] = score_result(result, terms)
+    results.sort(key=lambda r: r["score"], reverse=True)
 
     return render_template(
-        "index.html",
-        priorities=AGENCY_PRIORITIES,
-        query=", ".join(terms),
+        "quiz_results.html",
+        terms=terms[:5],
         results=results,
     )
+
 
 
 @app.get("/api/search")
