@@ -161,9 +161,20 @@ def extract_terms(org_type: str, focus: str, description: str, location: str) ->
     """Build a ranked list of search terms from quiz answers."""
     terms = []
 
-    # Focus area is the primary term
+    # Map focus area to relevant search terms based on NC OSBM policy areas
+    focus_map = {
+        "education": ["education", "school", "community college", "workforce training"],
+        "health": ["health", "human services", "mental health", "public health"],
+        "justice": ["public safety", "justice", "corrections", "emergency management"],
+        "environment": ["environment", "natural resources", "agriculture", "wildlife", "conservation"],
+        "economic": ["economic development", "commerce", "workforce", "small business"],
+        "transportation": ["transportation", "infrastructure", "roads", "transit"],
+        "housing": ["housing", "affordable housing", "community development"],
+        "technology": ["technology", "digital", "broadband", "cybersecurity"],
+    }
+
     if focus:
-        terms.append(focus)
+        terms.extend(focus_map.get(focus, [focus]))
 
     # Map org type to relevant grant terms
     org_map = {
@@ -225,7 +236,6 @@ def quiz():
     focus = request.form.get("focus", "").strip()
     description = request.form.get("description", "").strip()
     location = request.form.get("location", "").strip()
-    #funding_size = request.form.get("funding_size", "").strip()
 
     # Validate required fields
     if not org_type or not focus:
@@ -235,7 +245,7 @@ def quiz():
 
     # Build search terms and fetch results
     terms = extract_terms(org_type, focus, description, location)
-    results = find_opportunities_for_terms(terms[:5])  # top 5 terms to avoid too many API calls
+    results = find_opportunities_for_terms(terms[:5])
 
     # Score and sort results by relevance
     for result in results:
@@ -247,7 +257,6 @@ def quiz():
         terms=terms[:5],
         results=results,
     )
-
 
 
 @app.get("/api/search")

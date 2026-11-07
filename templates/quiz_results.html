@@ -92,7 +92,21 @@
         {% endfor %}
       </div>
     </div>
+    {% set min_score = terms | length %}
+    {% set has_full_match = results | selectattr('score', 'ge', min_score) | list | length > 0 %}
 
+    {% if not has_full_match %}
+      <div class="no-match-box">
+        <span class="no-match-icon">⚠️</span>
+        <div>
+          <strong>No grant currently matches all of your criteria.</strong>
+          <p>We searched for grants covering all of your selected priorities —
+          none of the current open opportunities match every requirement.
+          The results below are the closest available matches, but you may want to
+          try broadening your project description or check back as new grants are posted.</p>
+        </div>
+      </div>
+    {% endif %}
     <div class="results">
       {% if results %}
         {% for entry in results %}

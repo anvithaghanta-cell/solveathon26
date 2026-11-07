@@ -104,20 +104,20 @@
         <label>What is your project's primary focus?</label>
         <div class="options-grid">
           {% for val, label in [
-            ('water', 'Water & Watersheds'),
-            ('flood', 'Flood & Stormwater'),
-            ('resilience', 'Climate Resilience'),
-            ('infrastructure', 'Infrastructure'),
-            ('health', 'Public Health'),
             ('education', 'Education'),
+            ('health', 'Health & Human Services'),
+            ('justice', 'Justice & Public Safety'),
+            ('environment', 'Natural & Environmental Resources'),
+            ('economic', 'Economic Development'),
+            ('transportation', 'Transportation'),
             ('housing', 'Housing'),
-            ('environment', 'Environment')
+            ('technology', 'Information Technology')
           ] %}
-          <label class="option-card">
-            <input type="radio" name="focus" value="{{ val }}"
-              {% if form.focus == val %}checked{% endif %}>
-            {{ label }}
-          </label>
+            <label class="option-card">
+              <input type="radio" name="focus" value="{{ val }}"
+                {% if form.focus == val %}checked{% endif %}>
+              {{ label }}
+            </label>
           {% endfor %}
         </div>
         <div class="nav">
