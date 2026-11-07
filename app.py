@@ -19,6 +19,14 @@ AGENCY_PRIORITIES = [
     "infrastructure",
 ]
 
+FUNDING_RANGES = {
+    "small":  (0, 50_000),
+    "medium": (50_000, 250_000),
+    "large":  (250_000, 1_000_000),
+    "xlarge": (1_000_000, float("inf")),
+    "any":    (0, float("inf")),
+}
+
 
 def normalize_opportunity(raw: dict[str, Any]) -> dict[str, Any]:
     opportunity_id = raw.get("id")
@@ -127,6 +135,36 @@ def find_opportunities_for_terms(terms: list[str]) -> list[dict[str, Any]]:
     return results
 
 
+def parse_dollar(value: str) -> Any:
+    """Convert a formatted dollar string like '$1,000,000' to a float."""
+    if not value:
+        return None
+    cleaned = re.sub(r"[^\d.]", "", value)
+    try:
+        return float(cleaned)
+    except ValueError:
+        return None
+
+
+def within_funding_range(result: dict, funding_size: str) -> bool:
+    """Return True if the grant's award range overlaps with the user's desired range."""
+    if not funding_size or funding_size not in FUNDING_RANGES or funding_size == "any":
+        return True
+
+    user_min, user_max = FUNDING_RANGES[funding_size]
+    ceiling = parse_dollar(result.get("award_ceiling", ""))
+    floor = parse_dollar(result.get("award_floor", ""))
+
+    # If no funding data available, don't filter it out
+    if ceiling is None and floor is None:
+        return True
+
+    grant_max = ceiling if ceiling is not None else floor
+    grant_min = floor if floor is not None else 0
+
+    return grant_min <= user_max and grant_max >= user_min
+
+
 @app.get("/")
 def index():
     return render_template(
@@ -161,7 +199,6 @@ def extract_terms(org_type: str, focus: str, description: str, location: str) ->
     """Build a ranked list of search terms from quiz answers."""
     terms = []
 
-    # Map focus area to relevant search terms based on NC OSBM policy areas
     focus_map = {
         "education": ["education", "school", "community college", "workforce training"],
         "health": ["health", "human services", "mental health", "public health"],
@@ -176,7 +213,6 @@ def extract_terms(org_type: str, focus: str, description: str, location: str) ->
     if focus:
         terms.extend(focus_map.get(focus, [focus]))
 
-    # Map org type to relevant grant terms
     org_map = {
         "nonprofit": ["nonprofit", "community"],
         "government": ["municipality", "local government"],
@@ -187,18 +223,16 @@ def extract_terms(org_type: str, focus: str, description: str, location: str) ->
     }
     terms.extend(org_map.get(org_type, []))
 
-    # Pull meaningful words from the description (4+ chars, not stopwords)
     stopwords = {"that", "this", "with", "from", "will", "have", "been",
                  "they", "them", "their", "also", "into", "more", "some"}
     if description:
         words = re.findall(r"[a-zA-Z]{4,}", description.lower())
-        terms.extend(w for w in words if w not in stopwords)
+        desc_words = [w for w in words if w not in stopwords]
+        terms.extend(desc_words[:3])
 
-    # Add location if provided
     if location:
         terms.append(location.strip())
 
-    # Deduplicate while preserving order
     seen = set()
     unique = []
     for t in terms:
@@ -218,7 +252,16 @@ def score_result(result: dict, terms: list[str]) -> int:
         result.get("category", ""),
     ]).lower()
 
-    return sum(1 for term in terms if term.lower() in text)
+    score = 0
+    for term in terms:
+        term_lower = term.lower()
+        if term_lower in text or any(
+            word.startswith(term_lower) or term_lower.startswith(word)
+            for word in text.split()
+            if len(word) >= 4
+        ):
+            score += 1
+    return score
 
 
 @app.route("/quiz", methods=["GET", "POST"])
@@ -236,6 +279,7 @@ def quiz():
     focus = request.form.get("focus", "").strip()
     description = request.form.get("description", "").strip()
     location = request.form.get("location", "").strip()
+    funding_size = request.form.get("funding_size", "").strip()
 
     # Validate required fields
     if not org_type or not focus:
@@ -247,6 +291,10 @@ def quiz():
     terms = extract_terms(org_type, focus, description, location)
     results = find_opportunities_for_terms(terms[:5])
 
+    # Filter by funding size
+    if funding_size and funding_size != "any":
+        results = [r for r in results if within_funding_range(r, funding_size)]
+
     # Score and sort results by relevance
     for result in results:
         result["score"] = score_result(result, terms)
@@ -256,6 +304,7 @@ def quiz():
         "quiz_results.html",
         terms=terms[:5],
         results=results,
+        funding_size=funding_size,
     )
 
 
