@@ -62,7 +62,7 @@ GRANTS_DETAILS_URL = "https://api.grants.gov/v1/api/fetchOpportunity"
 
 AGENCY_PRIORITIES = ["water", "flood", "resilience", "infrastructure"]
 DATING_ROUNDS     = 5
-DATING_POOL_SIZE  = 30
+DATING_POOL_SIZE  = 10
 
 FUNDING_RANGES = {
     "small":  (0, 50_000),
