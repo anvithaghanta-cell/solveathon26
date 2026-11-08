@@ -420,8 +420,8 @@ def _score_by_profile(grant: dict, profile: dict) -> float:
 
 @app.get("/date")
 def date_start():
-    _server_sessions.pop(_sid(), None)   # clear any old session
-    session.pop("sid", None)
+    sid = _sid()  # ensure sid exists
+    _server_sessions.pop(sid, None)  # clear old data only, keep the cookie
     return render_template("date_start.html")
 
 
