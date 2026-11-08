@@ -420,13 +420,14 @@ def _score_by_profile(grant: dict, profile: dict) -> float:
 
 @app.get("/date")
 def date_start():
-    sid = _sid()  # ensure sid exists
-    _server_sessions.pop(sid, None)  # clear old data only, keep the cookie
+    _sid()  # ensure sid exists, but don't clear data
     return render_template("date_start.html")
 
 
 @app.post("/date/begin")
 def date_begin():
+    sid = _sid()
+    _server_sessions.pop(sid, None)  # clear here instead
     pool = find_opportunities_for_terms(
         AGENCY_PRIORITIES + ["health","education","housing","broadband","workforce"],
         limit=DATING_POOL_SIZE,
