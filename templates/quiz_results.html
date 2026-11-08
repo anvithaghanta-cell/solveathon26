@@ -146,6 +146,25 @@
     .btn-secondary:hover { background: #c9d8f0; }
 
     .empty { color: var(--muted); padding: 24px 0; text-align: center; }
+        .ai-explanation {
+      background: var(--accent-soft);
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 14px;
+    }
+    .ai-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--accent);
+      display: block;
+      margin-bottom: 4px;
+    }
+    .ai-explanation p {
+      margin: 0;
+      font-size: 0.9rem;
+      color: var(--ink);
+      line-height: 1.5;
+    }
   </style>
 </head>
 <body>
@@ -292,6 +311,13 @@
               <p class="summary">{{ entry.summary|striptags|truncate(300, true, "…") }}</p>
             {% else %}
               <p class="summary">A short description is not available. See the official announcement for details.</p>
+            {% endif %}
+
+                        {% if entry.ai_explanation %}
+              <div class="ai-explanation">
+                <span class="ai-label">✨ Why this fits you</span>
+                <p>{{ entry.ai_explanation }}</p>
+              </div>
             {% endif %}
 
             {% if entry.url %}
