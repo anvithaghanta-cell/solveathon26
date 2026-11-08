@@ -9,6 +9,37 @@ from flask import (
     Flask, jsonify, redirect, render_template,
     request, session, url_for
 )
+from dotenv import load_dotenv
+load_dotenv()
+
+from azure.ai.inference import ChatCompletionsClient
+from azure.core.credentials import AzureKeyCredential
+
+ai_client = ChatCompletionsClient(
+    endpoint="https://aghanta-4230-resource.services.ai.azure.com/models",
+    credential=AzureKeyCredential(os.environ.get("AZURE_OPENAI_KEY", "")),
+)
+
+
+def explain_grant_fit(grant: dict, user_context: dict) -> str:
+    try:
+        from azure.ai.inference.models import SystemMessage, UserMessage
+        response = ai_client.complete(
+            messages=[
+                SystemMessage(content="You are a helpful grant advisor."),
+                UserMessage(content=(
+                    f"In 2-3 sentences, explain why this grant fits the user. Be specific.\n\n"
+                    f"User: {user_context.get('org_type')} org, focus: {user_context.get('focus')}, "
+                    f"description: {user_context.get('description')}, location: {user_context.get('location')}\n\n"
+                    f"Grant: {grant.get('title')} | {grant.get('agency')} | {grant.get('summary','')[:400]}"
+                )),
+            ],
+            model=os.environ.get("AZURE_OPENAI_DEPLOYMENT", "gpt-6.1-sol"),
+        )
+        return response.choices[0].message.content.strip()
+    except Exception:
+        logging.exception("Azure AI explanation failed")
+        return ""
 
 app = Flask(__name__)
 
@@ -298,9 +329,19 @@ def quiz():
     except ValueError:
         pass
 
-    # Filter by funding size
+        # Filter by funding size
     if funding_size and funding_size != "any":
         results = [r for r in results if within_funding_range(r, funding_size)]
+
+    # Generate AI explanations for top 5 results
+    user_context = {
+        "org_type": org_type,
+        "focus": focus,
+        "description": description,
+        "location": location,
+    }
+    for result in results[:5]:
+        result["ai_explanation"] = explain_grant_fit(result, user_context)
 
     return render_template(
         "quiz_results.html",
