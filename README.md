@@ -4,6 +4,8 @@
 
 A web application that helps individuals and organizations discover relevant federal grant opportunities from Grants.gov. The platform combines keyword-based search, a guided matching quiz, and a preference-learning discovery flow to surface funding opportunities tailored to each user's project context.
 
+Link to Presentation: https://eam-gqh8h9fsa9guadft.eastus2-01.azurewebsites.net/
+
 ---
 
 ## Features
