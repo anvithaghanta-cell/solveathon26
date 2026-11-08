@@ -1,5 +1,4 @@
-**﻿## solveathon26
-**
+﻿## solveathon26
 
 # Grant Opportunity Finder
 
